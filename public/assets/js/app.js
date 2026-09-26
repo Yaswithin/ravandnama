@@ -13,6 +13,8 @@ import {
 } from "./state/auth.js";
 import { renderLoginView } from "./views/login.js";
 import { renderRegisterView } from "./views/register.js";
+import { renderDashboardView } from "./views/dashboard.js";
+import { renderProfileView } from "./views/profile.js";
 import { startRouter } from "./router.js";
 
 const appHeader = document.querySelector("#app-header");
@@ -61,9 +63,25 @@ function renderPlaceholder(path) {
     renderMessagePage(labels[path], "این بخش در مرحله‌ای بعدی آماده می‌شود.");
 }
 
+function renderAuthenticatedPage(path, user) {
+    main.classList.remove("app-main--auth");
+
+    if (path === "/dashboard") {
+        main.append(renderDashboardView(user));
+        return;
+    }
+
+    if (path === "/profile") {
+        main.append(renderProfileView(user, handleLogout));
+        return;
+    }
+
+    renderPlaceholder(path);
+}
+
 function renderPage(page) {
     const state = getAuthState();
-    renderNavigation(appHeader, state.user, handleLogout);
+    renderNavigation(appHeader, state.user, handleLogout, page.path);
     main.replaceChildren();
 
     if (page.type === "loading") {
@@ -94,7 +112,7 @@ function renderPage(page) {
         return;
     }
 
-    renderPlaceholder(page.path);
+    renderAuthenticatedPage(page.path, state.user);
 }
 
 function displayActionError(error, ui, retryAction, action) {

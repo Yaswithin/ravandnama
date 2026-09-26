@@ -44,6 +44,7 @@ export function startRouter(getState, renderPage) {
         }
 
         renderPage({ type: "route", path });
+        document.querySelector("#app-view")?.focus({ preventScroll: true });
     };
 
     window.addEventListener("hashchange", render);

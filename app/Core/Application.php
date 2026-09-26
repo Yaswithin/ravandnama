@@ -53,6 +53,7 @@ final class Application
                 <link rel="stylesheet" href="/assets/css/tokens.css">
                 <link rel="stylesheet" href="/assets/css/base.css">
                 <link rel="stylesheet" href="/assets/css/layout.css">
+                <link rel="stylesheet" href="/assets/css/components.css">
                 <script type="module" src="/assets/js/app.js"></script>
             </head>
             <body>
