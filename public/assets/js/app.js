@@ -16,6 +16,7 @@ import { renderRegisterView } from "./views/register.js";
 import { renderDashboardView } from "./views/dashboard.js";
 import { renderProfileView } from "./views/profile.js";
 import { renderProjectsView } from "./views/projects.js";
+import { renderTasksView } from "./views/tasks.js";
 import { startRouter } from "./router.js";
 
 const appHeader = document.querySelector("#app-header");
@@ -81,7 +82,16 @@ function renderAuthenticatedPage(path, user) {
         main.append(renderProjectsView({
             getCsrfToken: () => getAuthState().csrfToken,
             refreshCsrfToken,
-            onAuthenticationExpired: handleProjectAuthenticationExpired,
+            onAuthenticationExpired: handleAuthenticationExpired,
+        }));
+        return;
+    }
+
+    if (path === "/tasks") {
+        main.append(renderTasksView({
+            getCsrfToken: () => getAuthState().csrfToken,
+            refreshCsrfToken,
+            onAuthenticationExpired: handleAuthenticationExpired,
         }));
         return;
     }
@@ -89,7 +99,7 @@ function renderAuthenticatedPage(path, user) {
     renderPlaceholder(path);
 }
 
-function handleProjectAuthenticationExpired() {
+function handleAuthenticationExpired() {
     clearAuthState();
     pageNotice = {
         kind: "error",
