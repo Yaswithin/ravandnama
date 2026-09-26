@@ -14,11 +14,12 @@ final class Application
 
         $projectRoot = dirname(__DIR__, 2);
         $router = new Router();
+        $applicationConfig = require $projectRoot . '/config/app.php';
         $database = new Database(require $projectRoot . '/config/database.php');
         $registerApiRoutes = require $projectRoot . '/routes/api.php';
         $registerApiRoutes($router, $database);
 
-        $request = Request::fromGlobals();
+        $request = Request::fromGlobals($applicationConfig['max_request_body_bytes']);
 
         if ($request->path === '/api' || str_starts_with($request->path, '/api/')) {
             try {

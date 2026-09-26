@@ -28,6 +28,7 @@ export function renderNavigation(header, user, onLogout, activePath = "") {
         ["/dashboard", "خانه"],
         ["/tasks", "کارها"],
         ["/projects", "پروژه‌ها"],
+        ["/notes", "یادداشت‌ها"],
         ["/profile", "پروفایل"],
     ];
 

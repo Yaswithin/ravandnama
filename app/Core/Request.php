@@ -10,6 +10,11 @@ use stdClass;
 
 final class Request
 {
+    public const DEFAULT_MAX_BODY_BYTES = 1048576;
+    public const MAX_CONFIGURABLE_BODY_BYTES = 2097152;
+
+    public readonly bool $bodyTooLarge;
+
     /**
      * @param array<string, mixed> $query
      * @param array<string, string> $headers
@@ -20,10 +25,17 @@ final class Request
         public readonly array $query = [],
         public readonly array $headers = [],
         public readonly string $body = '',
+        public readonly int $maxBodyBytes = self::DEFAULT_MAX_BODY_BYTES,
+        ?bool $bodyTooLarge = null,
     ) {
+        if ($maxBodyBytes < 1 || $maxBodyBytes >= PHP_INT_MAX) {
+            throw new InvalidArgumentException('The request body limit must be a positive byte count.');
+        }
+
+        $this->bodyTooLarge = $bodyTooLarge ?? strlen($body) > $maxBodyBytes;
     }
 
-    public static function fromGlobals(): self
+    public static function fromGlobals(int $maxBodyBytes = self::DEFAULT_MAX_BODY_BYTES): self
     {
         $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
         $uri = $_SERVER['REQUEST_URI'] ?? '/';
@@ -35,12 +47,29 @@ final class Request
             $headers['Content-Type'] = $_SERVER['CONTENT_TYPE'];
         }
 
+        $contentLength = filter_var($_SERVER['CONTENT_LENGTH'] ?? null, FILTER_VALIDATE_INT);
+        $bodyTooLarge = is_int($contentLength) && $contentLength > $maxBodyBytes;
+        $body = '';
+
+        if (!$bodyTooLarge) {
+            $input = fopen('php://input', 'rb');
+
+            if ($input !== false) {
+                $readBody = stream_get_contents($input, $maxBodyBytes + 1);
+                fclose($input);
+                $body = is_string($readBody) ? $readBody : '';
+                $bodyTooLarge = strlen($body) > $maxBodyBytes;
+            }
+        }
+
         return new self(
             $method,
             is_string($path) && $path !== '' ? $path : '/',
             $_GET,
             $headers,
-            file_get_contents('php://input') ?: '',
+            $body,
+            $maxBodyBytes,
+            $bodyTooLarge,
         );
     }
 
@@ -50,6 +79,10 @@ final class Request
      */
     public function json(): array
     {
+        if ($this->bodyTooLarge) {
+            throw new InvalidArgumentException('Request body exceeds the configured limit.');
+        }
+
         $contentType = null;
 
         foreach ($this->headers as $name => $value) {

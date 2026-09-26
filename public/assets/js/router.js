@@ -1,5 +1,5 @@
 const publicRoutes = new Set(["/login", "/register"]);
-const protectedRoutes = new Set(["/dashboard", "/tasks", "/projects", "/profile"]);
+const protectedRoutes = new Set(["/dashboard", "/tasks", "/projects", "/notes", "/profile"]);
 const knownRoutes = new Set(["/", ...publicRoutes, ...protectedRoutes]);
 
 function currentPath() {

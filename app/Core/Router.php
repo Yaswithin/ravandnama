@@ -70,6 +70,13 @@ final class Router
 
     public function dispatch(Request $request): Response
     {
+        if ($request->bodyTooLarge) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Request body is too large.',
+            ], 413);
+        }
+
         $path = $this->normalizePath($request->path);
         $pathMatched = false;
 

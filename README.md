@@ -42,6 +42,13 @@ Open <http://localhost:8000> for the welcome page. The API health endpoints are
 
 `.env` is local-only and ignored by Git. Do not commit real credentials.
 
+The API rejects request bodies larger than `API_MAX_BODY_BYTES` with `413`.
+The default is 1,048,576 bytes (1 MiB); configure a positive value up to 2 MiB
+in `.env` if a deployment needs a different limit. The default accommodates
+Notes content up to 50,000 Unicode characters, including JSON escaping for
+supplementary Unicode characters, while bounding how much request data PHP reads
+and decodes.
+
 ## MySQL database
 
 Create a MySQL 8 database if it does not already exist:
@@ -318,4 +325,38 @@ Run the Projects regression suite after applying migrations:
 
 ```bash
 php tests/run-project-regression.php
+```
+
+## Notes API
+
+Notes belong to the authenticated user. The server derives ownership from the
+session; request bodies cannot set `user_id`. Every mutation requires the
+session's `X-CSRF-Token` from `GET /api/auth/csrf`.
+
+| Method | Endpoint | Result |
+| --- | --- | --- |
+| `GET` | `/api/notes` | List the authenticated user's notes |
+| `POST` | `/api/notes` | Create a note (`201`) |
+| `GET` | `/api/notes/{id}` | Get one owned note |
+| `PUT` | `/api/notes/{id}` | Partially update supplied fields |
+| `DELETE` | `/api/notes/{id}` | Delete one owned note |
+
+`title` is required, trimmed, and limited to 200 Unicode characters. `content`
+is required as a string and limited to 50,000 Unicode characters; an empty
+string is allowed for a title-only note. Timestamps are managed by MySQL. Lists,
+reads, updates, and deletes are scoped to the current user; an unknown or
+another user's note returns the same `404` response. `PUT` is partial: omitted
+fields retain their value, an empty request object is rejected, and `content: ""`
+clears the note body. Unknown fields including `user_id` return `422`.
+
+The `notes` table uses `utf8mb4`, an index on `(user_id, updated_at)`, and a
+foreign key to `users.id` with `ON DELETE CASCADE`. Apply it with
+`php database/migrate.php`. The Notes page is available at `#/notes`; its
+search filters the notes already loaded in the browser and does not add an API
+search endpoint.
+
+Run the Notes regression suite after applying migrations:
+
+```bash
+php tests/run-note-regression.php
 ```

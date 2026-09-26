@@ -17,6 +17,7 @@ import { renderDashboardView } from "./views/dashboard.js";
 import { renderProfileView } from "./views/profile.js";
 import { renderProjectsView } from "./views/projects.js";
 import { renderTasksView } from "./views/tasks.js";
+import { renderNotesView } from "./views/notes.js";
 import { startRouter } from "./router.js";
 
 const appHeader = document.querySelector("#app-header");
@@ -60,6 +61,7 @@ function renderPlaceholder(path) {
         "/dashboard": "خانه",
         "/tasks": "کارها",
         "/projects": "پروژه‌ها",
+        "/notes": "یادداشت‌ها",
         "/profile": "پروفایل و تنظیمات",
     };
     renderMessagePage(labels[path], "این بخش در مرحله‌ای بعدی آماده می‌شود.");
@@ -89,6 +91,15 @@ function renderAuthenticatedPage(path, user) {
 
     if (path === "/tasks") {
         main.append(renderTasksView({
+            getCsrfToken: () => getAuthState().csrfToken,
+            refreshCsrfToken,
+            onAuthenticationExpired: handleAuthenticationExpired,
+        }));
+        return;
+    }
+
+    if (path === "/notes") {
+        main.append(renderNotesView({
             getCsrfToken: () => getAuthState().csrfToken,
             refreshCsrfToken,
             onAuthenticationExpired: handleAuthenticationExpired,
