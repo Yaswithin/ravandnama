@@ -15,6 +15,7 @@ import { renderLoginView } from "./views/login.js";
 import { renderRegisterView } from "./views/register.js";
 import { renderDashboardView } from "./views/dashboard.js";
 import { renderProfileView } from "./views/profile.js";
+import { renderProjectsView } from "./views/projects.js";
 import { startRouter } from "./router.js";
 
 const appHeader = document.querySelector("#app-header");
@@ -76,7 +77,25 @@ function renderAuthenticatedPage(path, user) {
         return;
     }
 
+    if (path === "/projects") {
+        main.append(renderProjectsView({
+            getCsrfToken: () => getAuthState().csrfToken,
+            refreshCsrfToken,
+            onAuthenticationExpired: handleProjectAuthenticationExpired,
+        }));
+        return;
+    }
+
     renderPlaceholder(path);
+}
+
+function handleProjectAuthenticationExpired() {
+    clearAuthState();
+    pageNotice = {
+        kind: "error",
+        message: "نشست شما پایان یافته است. دوباره وارد شوید.",
+    };
+    window.location.hash = "#/login";
 }
 
 function renderPage(page) {
