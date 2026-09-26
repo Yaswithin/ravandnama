@@ -1,0 +1,11 @@
+/vendor/
+/.env
+/storage/logs/*
+!/storage/logs/.gitkeep
+/storage/cache/*
+!/storage/cache/.gitkeep
+.phpunit.cache/
+coverage/
+*.log
+.DS_Store
+Thumbs.db
