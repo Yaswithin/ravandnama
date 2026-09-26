@@ -1,0 +1,33 @@
+:root {
+    color-scheme: light;
+    --color-page: #f3f5f7;
+    --color-surface: #ffffff;
+    --color-text: #202a29;
+    --color-muted: #5d6c69;
+    --color-border: #d9e1de;
+    --color-accent: #37695e;
+    --color-accent-strong: #28554b;
+    --color-accent-soft: #edf4f1;
+    --color-focus: #9a5a18;
+    --color-danger: #a33b3b;
+    --color-danger-soft: #fff2f0;
+    --color-success: #276448;
+    --color-success-soft: #edf7f0;
+    --color-brand-panel: #1e403b;
+    --color-brand-panel-text: #f4f7f5;
+    --color-brand-panel-muted: #d0dfda;
+    --color-on-accent: #ffffff;
+    --shadow-panel: 0 1.25rem 3.5rem rgb(26 48 43 / 8%);
+    --radius-panel: 1.1rem;
+    --radius-control: 0.6rem;
+
+    --space-1: 0.5rem;
+    --space-2: 1rem;
+    --space-3: 1.5rem;
+    --space-4: 2rem;
+
+    --font-body: "Vazirmatn", system-ui, "Segoe UI", Tahoma, sans-serif;
+    --font-size-body: 1rem;
+    --line-height-body: 1.7;
+    --content-width: 72rem;
+}

@@ -1,0 +1,44 @@
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    min-width: 20rem;
+    background: var(--color-page);
+}
+
+body {
+    min-height: 100vh;
+    margin: 0;
+    color: var(--color-text);
+    font-family: var(--font-body);
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-body);
+}
+
+button,
+input,
+textarea,
+select {
+    font: inherit;
+}
+
+a {
+    color: var(--color-accent);
+}
+
+button {
+    color: inherit;
+}
+
+:focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 3px;
+}
+
+::selection {
+    color: var(--color-text);
+    background: var(--color-accent-soft);
+}
