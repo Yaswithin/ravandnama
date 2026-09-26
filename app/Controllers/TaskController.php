@@ -10,6 +10,7 @@ use App\Core\Response;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\TaskService;
+use App\Services\TaskProjectNotFoundException;
 use App\Services\TaskValidationException;
 use InvalidArgumentException;
 
@@ -44,6 +45,8 @@ final class TaskController
                 $task = $this->tasks->createForUser($user->id, $input);
             } catch (TaskValidationException $exception) {
                 return $this->validationResponse($exception);
+            } catch (TaskProjectNotFoundException) {
+                return $this->projectNotFound();
             }
 
             return Response::json([
@@ -88,6 +91,8 @@ final class TaskController
                 $task = $this->tasks->updateForUser($id, $user->id, $input);
             } catch (TaskValidationException $exception) {
                 return $this->validationResponse($exception);
+            } catch (TaskProjectNotFoundException) {
+                return $this->projectNotFound();
             }
 
             return $task === null
@@ -140,6 +145,14 @@ final class TaskController
         return Response::json([
             'success' => false,
             'message' => 'Task not found.',
+        ], 404);
+    }
+
+    private function projectNotFound(): Response
+    {
+        return Response::json([
+            'success' => false,
+            'message' => 'Project not found.',
         ], 404);
     }
 

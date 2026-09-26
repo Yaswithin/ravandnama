@@ -186,7 +186,8 @@ Create a task with JSON:
 {
   "title": "Study English",
   "description": "Practice for 30 minutes",
-  "due_at": "2026-09-27 18:00:00"
+  "due_at": "2026-09-27 18:00:00",
+  "project_id": 3
 }
 ```
 
@@ -198,7 +199,11 @@ New tasks start as `pending`. Send `status: "completed"` or
 `status: "pending"` in a `PUT` request to change completion state; clients
 cannot set `completed_at` directly. Completion timestamps are managed by the
 service. `PUT` is a partial update: omitted fields retain their current values;
-send `null` to clear `description` or `due_at`.
+send `null` to clear `description`, `due_at`, or `project_id`. `project_id` is
+optional and may be `null`; a positive integer assigns the Task to a Project
+owned by the authenticated user. Inaccessible or nonexistent Projects return
+the same `404` response. Omitting `project_id` when creating a Task leaves it
+unassigned.
 
 For example, to complete a task:
 
@@ -209,8 +214,8 @@ For example, to complete a task:
 ```
 
 Successful responses use the standard `{ "success": true, "data": ... }`
-envelope. Task representations include `id`, `title`, `description`, `status`,
-`due_at`, `completed_at`, `created_at`, and `updated_at`; the internal
+envelope. Task representations include `id`, `project_id`, `title`,
+`description`, `status`, `due_at`, `completed_at`, `created_at`, and `updated_at`; the internal
 `user_id` is not returned. Lists contain only the current user's tasks. Every
 single-task lookup, update, and delete scopes by both task ID and authenticated
 user ID; nonexistent and other users' tasks both return `404`.
@@ -223,6 +228,7 @@ Create returns `201` with the created task:
   "data": {
     "task": {
       "id": 1,
+      "project_id": null,
       "title": "Study English",
       "description": "Practice for 30 minutes",
       "status": "pending",
@@ -294,8 +300,19 @@ scope by both Project ID and authenticated user ID; a missing Project and
 another user's Project both return `404`. Other successful reads and updates
 return `200`; deletes return `200`. Unauthenticated requests return `401`,
 invalid CSRF tokens `403`, validation errors `422`, and unexpected errors a
-generic `500` response. Tasks are not linked to Projects yet; that relationship
-will be introduced in a later stage.
+generic `500` response.
+
+The Task-to-Project relationship is optional. Deleting a Project does not
+delete its Tasks; MySQL sets their `project_id` to `NULL`.
+
+```text
+User
+ ├── Projects
+ └── Tasks
+
+Project
+ └── Tasks (optional)
+```
 
 Run the Projects regression suite after applying migrations:
 

@@ -49,8 +49,9 @@ return static function (Router $router, Database $database): void {
     $authService = new AuthService($users, $session);
     $auth = new Auth($session, $users);
     $authController = new AuthController($authService, $auth, $session);
-    $taskController = new TaskController($auth, new TaskService(new TaskRepository($database)));
-    $projectController = new ProjectController($auth, new ProjectService(new ProjectRepository($database)));
+    $projectRepository = new ProjectRepository($database);
+    $taskController = new TaskController($auth, new TaskService(new TaskRepository($database), $projectRepository));
+    $projectController = new ProjectController($auth, new ProjectService($projectRepository));
 
     $router->get('/api/auth/csrf', static fn (Request $request): Response => Response::json([
         'success' => true,

@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Models\Task;
 use App\Repositories\TaskRepository;
+use App\Repositories\ProjectRepository;
 use DateTimeImmutable;
 
 final class TaskService
@@ -14,23 +15,29 @@ final class TaskService
     private const DESCRIPTION_MAX_LENGTH = 10000;
     private const DUE_AT_FORMAT = 'Y-m-d H:i:s';
 
-    public function __construct(private readonly TaskRepository $tasks)
+    public function __construct(
+        private readonly TaskRepository $tasks,
+        private readonly ProjectRepository $projects,
+    )
     {
     }
 
     /** @param array<string, mixed> $input */
     public function createForUser(int $userId, array $input): Task
     {
-        $errors = $this->unknownFields($input, ['title', 'description', 'due_at']);
+        $errors = $this->unknownFields($input, ['title', 'description', 'due_at', 'project_id']);
         $title = $this->validatedTitle($input, $errors, required: true);
         $description = $this->validatedDescription($input, $errors);
         $dueAt = $this->validatedDueAt($input, $errors);
+        $projectId = $this->validatedProjectId($input, $errors);
 
         if ($errors !== []) {
             throw new TaskValidationException($errors);
         }
 
-        return $this->tasks->create($userId, $title, $description, $dueAt);
+        $this->assertProjectOwned($projectId, $userId);
+
+        return $this->tasks->create($userId, $title, $description, $dueAt, $projectId);
     }
 
     /** @return list<Task> */
@@ -53,7 +60,7 @@ final class TaskService
             return null;
         }
 
-        $errors = $this->unknownFields($input, ['title', 'description', 'due_at', 'status']);
+        $errors = $this->unknownFields($input, ['title', 'description', 'due_at', 'status', 'project_id']);
 
         if ($input === []) {
             $errors['body'] = 'At least one task field must be provided.';
@@ -66,6 +73,9 @@ final class TaskService
         $dueAt = array_key_exists('due_at', $input)
             ? $this->validatedDueAt($input, $errors)
             : $current->dueAt;
+        $projectId = array_key_exists('project_id', $input)
+            ? $this->validatedProjectId($input, $errors)
+            : $current->projectId;
 
         $status = $current->status;
 
@@ -80,6 +90,8 @@ final class TaskService
         if ($errors !== []) {
             throw new TaskValidationException($errors);
         }
+
+        $this->assertProjectOwned($projectId, $userId);
 
         $completedAt = match ($status) {
             'completed' => $current->status === 'completed' && $current->completedAt !== null
@@ -96,6 +108,7 @@ final class TaskService
             $status,
             $dueAt,
             $completedAt,
+            $projectId,
         );
     }
 
@@ -180,6 +193,29 @@ final class TaskService
         }
 
         return $input['due_at'];
+    }
+
+    /** @param array<string, mixed> $input @param array<string, string> $errors */
+    private function validatedProjectId(array $input, array &$errors): ?int
+    {
+        if (!array_key_exists('project_id', $input) || $input['project_id'] === null) {
+            return null;
+        }
+
+        if (!is_int($input['project_id']) || $input['project_id'] < 1) {
+            $errors['project_id'] = 'Project ID must be a positive integer or null.';
+
+            return null;
+        }
+
+        return $input['project_id'];
+    }
+
+    private function assertProjectOwned(?int $projectId, int $userId): void
+    {
+        if ($projectId !== null && $this->projects->findByIdForUser($projectId, $userId) === null) {
+            throw new TaskProjectNotFoundException();
+        }
     }
 
     /** @param array<string, mixed> $input @param list<string> $allowed @return array<string, string> */

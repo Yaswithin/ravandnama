@@ -176,8 +176,15 @@ try {
     $foreignKey->execute();
     $assert($foreignKey->fetchColumn() === 'CASCADE', 'Project user foreign key cascades on user deletion');
 
-    $columnCheck = $pdo->query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tasks' AND COLUMN_NAME = 'project_id'");
-    $assert((int) $columnCheck->fetchColumn() === 0, 'Tasks remain independent from Projects in this stage');
+    $columnCheck = $pdo->query("SELECT IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tasks' AND COLUMN_NAME = 'project_id'");
+    $assert($columnCheck->fetchColumn() === 'YES', 'Task project_id relationship is nullable');
+    $taskForeignKey = $pdo->query(<<<'SQL'
+        SELECT rc.DELETE_RULE
+        FROM information_schema.REFERENTIAL_CONSTRAINTS rc
+        WHERE rc.CONSTRAINT_SCHEMA = DATABASE()
+          AND rc.CONSTRAINT_NAME = 'tasks_project_id_foreign'
+        SQL);
+    $assert($taskForeignKey->fetchColumn() === 'SET NULL', 'Deleting a Project sets Task project_id to null');
 } catch (Throwable $exception) {
     $failures[] = 'Unexpected test error: ' . $exception::class . ' (details withheld)';
 } finally {

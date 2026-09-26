@@ -9,6 +9,7 @@ final readonly class Task
     public function __construct(
         public int $id,
         public int $userId,
+        public ?int $projectId,
         public string $title,
         public ?string $description,
         public string $status,
@@ -25,6 +26,7 @@ final readonly class Task
         return new self(
             (int) $record['id'],
             (int) $record['user_id'],
+            isset($record['project_id']) ? (int) $record['project_id'] : null,
             (string) $record['title'],
             is_string($record['description'] ?? null) ? $record['description'] : null,
             (string) $record['status'],
@@ -35,11 +37,12 @@ final readonly class Task
         );
     }
 
-    /** @return array{id: int, title: string, description: ?string, status: string, due_at: ?string, completed_at: ?string, created_at: string, updated_at: string} */
+    /** @return array{id: int, project_id: ?int, title: string, description: ?string, status: string, due_at: ?string, completed_at: ?string, created_at: string, updated_at: string} */
     public function toArray(): array
     {
         return [
             'id' => $this->id,
+            'project_id' => $this->projectId,
             'title' => $this->title,
             'description' => $this->description,
             'status' => $this->status,
