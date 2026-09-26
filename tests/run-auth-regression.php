@@ -49,7 +49,7 @@ $call = static function (Router $router, string $method, string $path, array $he
     $response->send();
     $responseBody = (string) ob_get_clean();
 
-    return [http_response_code(), $responseBody, json_decode($responseBody, true)];
+    return [http_response_code(), $responseBody, json_decode($responseBody, true), $response->header('Cache-Control')];
 };
 
 $jsonHeaders = static fn (?string $token = null): array => array_filter([
@@ -87,9 +87,10 @@ try {
     session_id(bin2hex(random_bytes(16)));
     $session->start();
 
-    [$status, $csrfBody, $csrfData] = $call($router, 'GET', '/api/auth/csrf');
+    [$status, $csrfBody, $csrfData, $csrfCacheControl] = $call($router, 'GET', '/api/auth/csrf');
     $token = $csrfData['data']['csrf_token'] ?? '';
     $assert($status === 200 && preg_match('/\A[a-f0-9]{64}\z/', $token) === 1, 'CSRF endpoint returns a 32-byte random token');
+    $assert($csrfCacheControl === 'no-store', 'CSRF response disables caching');
     $assert($session->get('csrf.token') === $token, 'CSRF token stored in session');
     $assert(!str_contains($csrfBody, session_id()), 'Session ID is absent from CSRF JSON response');
 
@@ -149,8 +150,9 @@ try {
     $assert($session->get('csrf.token') === $token, 'CSRF token survives session ID regeneration');
     $assert(!str_contains($loginBody, $rawPassword) && !str_contains($loginBody, 'password_hash') && !str_contains($loginBody, session_id()), 'Login response excludes password, hash, and session ID');
 
-    [$status, $meBody] = $call($router, 'GET', '/api/auth/me');
+    [$status, $meBody, , $meCacheControl] = $call($router, 'GET', '/api/auth/me');
     $assert($status === 200, 'Me returns authenticated user without CSRF header');
+    $assert($meCacheControl === 'no-store', 'Authenticated Me response disables caching');
     $assert(!str_contains($meBody, 'password_hash') && !str_contains($meBody, $rawPassword), 'Me response excludes password material');
 
     [$status, $wrongPasswordBody] = $call($router, 'POST', '/api/auth/login', $jsonHeaders($token), json_encode([

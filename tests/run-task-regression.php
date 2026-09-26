@@ -45,7 +45,7 @@ $call = static function (Router $router, string $method, string $path, array $he
     $response->send();
     $responseBody = (string) ob_get_clean();
 
-    return [http_response_code(), $responseBody, json_decode($responseBody, true)];
+    return [http_response_code(), $responseBody, json_decode($responseBody, true), $response->header('Cache-Control')];
 };
 
 $body = static fn (array $data): string => json_encode($data, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
@@ -122,8 +122,9 @@ try {
     [$status] = $call($router, 'POST', '/api/tasks', $headers($token), $body(['title' => 'Foreign project', 'project_id' => $projectB->id]));
     $assert($status === 404, 'Create with another user project returns 404');
 
-    [$status, , $listA] = $call($router, 'GET', '/api/tasks');
+    [$status, , $listA, $taskListCacheControl] = $call($router, 'GET', '/api/tasks');
     $assert($status === 200 && count($listA['data']['tasks'] ?? []) === 1, 'Authenticated list returns own tasks');
+    $assert($taskListCacheControl === 'no-store', 'Authenticated task list disables caching');
     [$status] = $call($router, 'GET', '/api/tasks/999999999');
     $assert($status === 404, 'Nonexistent task returns 404');
     [$status, , $ownTask] = $call($router, 'GET', '/api/tasks/' . $taskAId);

@@ -44,7 +44,7 @@ $call = static function (Router $router, string $method, string $path, array $he
     $response->send();
     $responseBody = (string) ob_get_clean();
 
-    return [http_response_code(), $responseBody, json_decode($responseBody, true)];
+    return [http_response_code(), $responseBody, json_decode($responseBody, true), $response->header('Cache-Control')];
 };
 
 $body = static fn (array $data): string => json_encode($data, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
@@ -112,8 +112,9 @@ try {
     $assert(!array_key_exists('user_id', $created['data']['project']), 'Public Project representation excludes user_id');
     $assert(!str_contains($createBody, 'password') && !str_contains($createBody, 'csrf'), 'Project response excludes authentication data');
 
-    [$status, , $listA] = $call($router, 'GET', '/api/projects');
+    [$status, , $listA, $projectListCacheControl] = $call($router, 'GET', '/api/projects');
     $assert($status === 200 && count($listA['data']['projects'] ?? []) === 1, 'List returns User A projects');
+    $assert($projectListCacheControl === 'no-store', 'Authenticated project list disables caching');
     [$status, , $ownProject] = $call($router, 'GET', '/api/projects/' . $projectAId);
     $assert($status === 200 && ($ownProject['data']['project']['id'] ?? null) === $projectAId, 'User A can get own Project');
     [$status] = $call($router, 'GET', '/api/projects/999999999');

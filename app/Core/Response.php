@@ -12,7 +12,10 @@ final class Response
         return new self(
             json_encode($data, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             $statusCode,
-            ['Content-Type' => 'application/json; charset=UTF-8'],
+            [
+                'Content-Type' => 'application/json; charset=UTF-8',
+                'Cache-Control' => 'no-store',
+            ],
         );
     }
 
@@ -38,5 +41,16 @@ final class Response
         }
 
         echo $this->body;
+    }
+
+    public function header(string $name): ?string
+    {
+        foreach ($this->headers as $headerName => $value) {
+            if (strcasecmp($headerName, $name) === 0) {
+                return $value;
+            }
+        }
+
+        return null;
     }
 }
