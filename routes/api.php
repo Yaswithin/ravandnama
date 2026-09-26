@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Controllers\AuthController;
+use App\Controllers\TaskController;
 use App\Core\Auth;
 use App\Core\Database;
 use App\Core\Csrf;
@@ -11,7 +12,9 @@ use App\Core\Response;
 use App\Core\Router;
 use App\Core\Session;
 use App\Repositories\UserRepository;
+use App\Repositories\TaskRepository;
 use App\Services\AuthService;
+use App\Services\TaskService;
 
 return static function (Router $router, Database $database): void {
     $router->get('/api/health', static fn (Request $request): Response => Response::json([
@@ -43,6 +46,7 @@ return static function (Router $router, Database $database): void {
     $authService = new AuthService($users, $session);
     $auth = new Auth($session, $users);
     $authController = new AuthController($authService, $auth, $session);
+    $taskController = new TaskController($auth, new TaskService(new TaskRepository($database)));
 
     $router->get('/api/auth/csrf', static fn (Request $request): Response => Response::json([
         'success' => true,
@@ -55,4 +59,10 @@ return static function (Router $router, Database $database): void {
     $router->post('/api/auth/login', $csrf->protect([$authController, 'login']));
     $router->get('/api/auth/me', [$authController, 'me']);
     $router->post('/api/auth/logout', $csrf->protect([$authController, 'logout']));
+
+    $router->get('/api/tasks', [$taskController, 'index']);
+    $router->post('/api/tasks', $csrf->protect([$taskController, 'store']));
+    $router->get('/api/tasks/{id}', [$taskController, 'show']);
+    $router->put('/api/tasks/{id}', $csrf->protect([$taskController, 'update']));
+    $router->delete('/api/tasks/{id}', $csrf->protect([$taskController, 'destroy']));
 };

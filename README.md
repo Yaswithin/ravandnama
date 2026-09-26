@@ -164,3 +164,79 @@ php tests/run-auth-regression.php
 The suite makes one temporary user with a unique email and removes it and its
 test session when finished. It checks Register, Login, `/me`, Logout, CSRF,
 password hashing, and session security settings without adding a test library.
+
+## Tasks API
+
+All task endpoints require an authenticated session. Send the session cookie
+from Login; `POST`, `PUT`, and `DELETE` also require the session's
+`X-CSRF-Token` obtained from `GET /api/auth/csrf`. GET requests do not require a
+CSRF token.
+
+| Method | Endpoint | Result |
+| --- | --- | --- |
+| `GET` | `/api/tasks` | List the authenticated user's tasks |
+| `POST` | `/api/tasks` | Create a pending task (`201`) |
+| `GET` | `/api/tasks/{id}` | Get one owned task |
+| `PUT` | `/api/tasks/{id}` | Partially update supplied fields |
+| `DELETE` | `/api/tasks/{id}` | Delete one owned task |
+
+Create a task with JSON:
+
+```json
+{
+  "title": "Study English",
+  "description": "Practice for 30 minutes",
+  "due_at": "2026-09-27 18:00:00"
+}
+```
+
+`title` is required and limited to 200 characters. `description` is optional,
+trimmed, and limited to 10,000 characters. `due_at` is optional and accepts
+`Y-m-d H:i:s` (for example `2026-09-27 18:00:00`) or `null`. It has no timezone
+offset and is interpreted in the PHP application's configured local timezone.
+New tasks start as `pending`. Send `status: "completed"` or
+`status: "pending"` in a `PUT` request to change completion state; clients
+cannot set `completed_at` directly. Completion timestamps are managed by the
+service. `PUT` is a partial update: omitted fields retain their current values;
+send `null` to clear `description` or `due_at`.
+
+For example, to complete a task:
+
+```json
+{
+  "status": "completed"
+}
+```
+
+Successful responses use the standard `{ "success": true, "data": ... }`
+envelope. Task representations include `id`, `title`, `description`, `status`,
+`due_at`, `completed_at`, `created_at`, and `updated_at`; the internal
+`user_id` is not returned. Lists contain only the current user's tasks. Every
+single-task lookup, update, and delete scopes by both task ID and authenticated
+user ID; nonexistent and other users' tasks both return `404`.
+
+Create returns `201` with the created task:
+
+```json
+{
+  "success": true,
+  "data": {
+    "task": {
+      "id": 1,
+      "title": "Study English",
+      "description": "Practice for 30 minutes",
+      "status": "pending",
+      "due_at": "2026-09-27 18:00:00.000000",
+      "completed_at": null,
+      "created_at": "2026-09-26 12:00:00.000000",
+      "updated_at": "2026-09-26 12:00:00.000000"
+    }
+  }
+}
+```
+
+`GET /api/tasks` returns the same representation in `data.tasks`, an array.
+
+Validation errors return `422`, unauthenticated requests `401`, and missing or
+invalid CSRF tokens `403`. Invalid JSON or a non-JSON Content-Type returns
+`400`. Internal errors return a generic `500` response.

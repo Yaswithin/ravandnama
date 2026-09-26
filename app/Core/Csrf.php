@@ -47,7 +47,7 @@ final class Csrf
     /** Wrap a state-changing route handler with CSRF validation. */
     public function protect(callable $handler): Closure
     {
-        return function (Request $request) use ($handler): Response {
+        return function (Request $request, array $parameters = []) use ($handler): Response {
             if (!$this->validateRequest($request)) {
                 return Response::json([
                     'success' => false,
@@ -55,7 +55,9 @@ final class Csrf
                 ], 403);
             }
 
-            $response = $handler($request);
+            $response = $parameters === []
+                ? $handler($request)
+                : $handler($request, $parameters);
 
             if (!$response instanceof Response) {
                 throw new LogicException('CSRF-protected route handlers must return a Response instance.');
