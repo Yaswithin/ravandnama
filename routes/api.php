@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Controllers\AuthController;
+use App\Controllers\ProjectController;
 use App\Controllers\TaskController;
 use App\Core\Auth;
 use App\Core\Database;
@@ -13,7 +14,9 @@ use App\Core\Router;
 use App\Core\Session;
 use App\Repositories\UserRepository;
 use App\Repositories\TaskRepository;
+use App\Repositories\ProjectRepository;
 use App\Services\AuthService;
+use App\Services\ProjectService;
 use App\Services\TaskService;
 
 return static function (Router $router, Database $database): void {
@@ -47,6 +50,7 @@ return static function (Router $router, Database $database): void {
     $auth = new Auth($session, $users);
     $authController = new AuthController($authService, $auth, $session);
     $taskController = new TaskController($auth, new TaskService(new TaskRepository($database)));
+    $projectController = new ProjectController($auth, new ProjectService(new ProjectRepository($database)));
 
     $router->get('/api/auth/csrf', static fn (Request $request): Response => Response::json([
         'success' => true,
@@ -65,4 +69,10 @@ return static function (Router $router, Database $database): void {
     $router->get('/api/tasks/{id}', [$taskController, 'show']);
     $router->put('/api/tasks/{id}', $csrf->protect([$taskController, 'update']));
     $router->delete('/api/tasks/{id}', $csrf->protect([$taskController, 'destroy']));
+
+    $router->get('/api/projects', [$projectController, 'index']);
+    $router->post('/api/projects', $csrf->protect([$projectController, 'store']));
+    $router->get('/api/projects/{id}', [$projectController, 'show']);
+    $router->put('/api/projects/{id}', $csrf->protect([$projectController, 'update']));
+    $router->delete('/api/projects/{id}', $csrf->protect([$projectController, 'destroy']));
 };

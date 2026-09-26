@@ -240,3 +240,65 @@ Create returns `201` with the created task:
 Validation errors return `422`, unauthenticated requests `401`, and missing or
 invalid CSRF tokens `403`. Invalid JSON or a non-JSON Content-Type returns
 `400`. Internal errors return a generic `500` response.
+
+## Projects API
+
+Projects are independent resources and belong to the authenticated user. Every
+endpoint requires the session cookie from Login. `POST`, `PUT`, and `DELETE`
+also require the session's `X-CSRF-Token` from `GET /api/auth/csrf`; GET
+requests do not require a CSRF token.
+
+| Method | Endpoint | Result |
+| --- | --- | --- |
+| `GET` | `/api/projects` | List the authenticated user's projects |
+| `POST` | `/api/projects` | Create a project (`201`) |
+| `GET` | `/api/projects/{id}` | Get one owned project |
+| `PUT` | `/api/projects/{id}` | Partially update supplied fields |
+| `DELETE` | `/api/projects/{id}` | Delete one owned project |
+
+Create a project with JSON:
+
+```json
+{
+  "name": "Ravandnama",
+  "description": "Personal Life OS project"
+}
+```
+
+`name` is required, trimmed, and limited to 200 characters. `description` is
+optional, trimmed, and limited to 10,000 characters; `null` or an empty string
+clears it. Unknown fields such as `user_id` are rejected with `422`; ownership
+always comes from the server-side authenticated session. `PUT` is a partial
+update: omitted fields retain their current values.
+
+A successful create returns `201` with the public Project representation:
+
+```json
+{
+  "success": true,
+  "data": {
+    "project": {
+      "id": 1,
+      "name": "Ravandnama",
+      "description": "Personal Life OS project",
+      "created_at": "2026-09-26 12:00:00.000000",
+      "updated_at": "2026-09-26 12:00:00.000000"
+    }
+  }
+}
+```
+
+`GET /api/projects` returns the same representation in `data.projects`. The
+public representation excludes `user_id`. Lookups, updates, and deletions
+scope by both Project ID and authenticated user ID; a missing Project and
+another user's Project both return `404`. Other successful reads and updates
+return `200`; deletes return `200`. Unauthenticated requests return `401`,
+invalid CSRF tokens `403`, validation errors `422`, and unexpected errors a
+generic `500` response. Tasks are not linked to Projects yet; that relationship
+will be introduced in a later stage.
+
+Run the Projects regression suite after applying migrations:
+
+```bash
+php tests/run-project-regression.php
+```
