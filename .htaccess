@@ -1,0 +1,18 @@
+RewriteEngine On
+
+# Never serve dotfiles or repository-private paths from the htdocs document root.
+RewriteRule (^|/)\. - [F,END]
+RewriteRule ^(?:app|config|database|docs|routes|storage|tests|vendor|public)(?:/|$) - [F,END,NC]
+RewriteRule ^(?:composer\.(?:json|lock)|README(?:\.md)?)$ - [F,END,NC]
+RewriteRule (^|/)\.{1,2}(/|$) - [F,END]
+
+# The application references these public asset types from /assets/.
+RewriteRule ^assets/(.+\.(?:css|js|png|svg))$ public/assets/$1 [END]
+
+# API URLs and the site root reach the existing front controller. Hash routes
+# are fragments, so the browser sends them with / and needs no server rewrite.
+RewriteRule ^(?:api(?:/.*)?)?$ public/index.php [END]
+
+# Fail closed for every other URL; private files and directories are never
+# used as a document-root fallback.
+RewriteRule ^ - [F,END]
