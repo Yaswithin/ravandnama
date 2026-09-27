@@ -42,6 +42,9 @@ Open <http://localhost:8000> for the welcome page. The API health endpoints are
 
 `.env` is local-only and ignored by Git. Do not commit real credentials.
 
+For Linux VPS production deployment with Nginx, PHP-FPM, and MySQL, see
+[`docs/deployment/DEPLOYMENT.md`](docs/deployment/DEPLOYMENT.md).
+
 The API rejects request bodies larger than `API_MAX_BODY_BYTES` with `413`.
 The default is 1,048,576 bytes (1 MiB); configure a positive value up to 2 MiB
 in `.env` if a deployment needs a different limit. The default accommodates

@@ -1,0 +1,79 @@
+# Production Nginx template for Ravandnama.
+# Replace the example certificate paths and PHP-FPM socket with values for the server.
+# Replace `server_name _;` with the deployed hostname before enabling this site.
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name _;
+
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name _;
+
+    # PLACEHOLDER: set these to the TLS certificate and private-key paths.
+    ssl_certificate     /etc/ssl/certs/REPLACE_WITH_CERTIFICATE.pem;
+    ssl_certificate_key /etc/ssl/private/REPLACE_WITH_PRIVATE_KEY.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    # PLACEHOLDER: point this at the release's public directory only.
+    root /srv/www/ravandnama/current/public;
+    index index.php;
+    autoindex off;
+
+    # The application accepts up to 2 MiB when API_MAX_BODY_BYTES is configured
+    # to its maximum; the default application limit is 1 MiB.
+    client_max_body_size 2m;
+
+    # Keep dotfiles private except for the conventional ACME challenge directory.
+    location ~* ^/(?!\.well-known(?:/|$))\. {
+        return 404;
+    }
+
+    # Defense in depth. These paths are outside the document root in a correct
+    # deployment, but must never be served if the root is misconfigured.
+    location ~* ^/(?:app|config|database|docs|routes|storage|tests|vendor)(?:/|$) {
+        return 404;
+    }
+
+    location ~* ^/(?:composer\.(?:json|lock)|README(?:\.md)?)$ {
+        return 404;
+    }
+
+    # Serve existing public assets directly; send application and API paths to
+    # the existing front controller. The application router handles /api paths.
+    location / {
+        try_files $uri $uri/ @ravandnama_front_controller;
+    }
+
+    # Only the application front controller may execute as PHP.
+    location = /index.php {
+        try_files /index.php =404;
+
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root/index.php;
+        fastcgi_param SCRIPT_NAME /index.php;
+        fastcgi_param HTTPS $https if_not_empty;
+
+        # PLACEHOLDER: replace with this server's PHP 8.4 FPM socket or upstream.
+        fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+    }
+
+    location ~* \.php(?:/|$) {
+        return 404;
+    }
+
+    location @ravandnama_front_controller {
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root/index.php;
+        fastcgi_param SCRIPT_NAME /index.php;
+        fastcgi_param HTTPS $https if_not_empty;
+
+        # PLACEHOLDER: keep this in sync with the PHP-FPM socket above.
+        fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+    }
+}
