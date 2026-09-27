@@ -19,8 +19,9 @@ runtime files needed by that entry point:
 Do not upload `.git/`, `docs/`, `tests/`, `database/`, `.env.example`, or
 Composer's `composer.json` and `composer.lock`. The app loads its environment
 from the project root and its front controller loads `vendor/autoload.php`.
-The database schema is handled separately through phpMyAdmin; no database
-creation or migration is part of this guide.
+Create/select the hosting database separately in cPanel/phpMyAdmin. The
+deployment-oriented schema import is described below; no database is created
+by this repository or guide.
 
 Prepare Composer files locally, where Composer is available:
 
@@ -64,6 +65,34 @@ directories outside the set of URLs served by the allowlist. Do not expose
   when PHP sees HTTPS (or port 443); verify the host passes that state through.
 - Database creation and schema setup are a separate phpMyAdmin stage. Do not
   assume the database exists until that stage has been completed.
+
+## phpMyAdmin schema import
+
+Before importing, create/select a new empty database and confirm its server
+product/version and support for `utf8mb4_0900_ai_ci` in phpMyAdmin (for example,
+run `SELECT VERSION();` and `SHOW COLLATION LIKE 'utf8mb4_0900_ai_ci';`). The
+current migrations explicitly use that collation. The checked-in
+[`database-schema.sql`](database-schema.sql) is a complete fresh-schema import
+rendered in migration filename order, including the `migrations` tracking
+table and the five applied migration names. It contains no users or other
+application data. Import it once into the selected empty database; do not use
+it to upgrade an existing database or retry after a partial import. Future
+schema changes must be represented in the PHP migrations and this import file
+must be regenerated from those migration statements.
+
+The import uses ordinary `CREATE TABLE`, `ALTER TABLE`, and `INSERT` statements;
+it does not require `DELIMITER`, routines, triggers, or a CLI. DDL can commit
+statement-by-statement, so a failed/partial import must be inspected before any
+retry. The generated file preserves `utf8mb4_0900_ai_ci` exactly and must not be
+imported on a server that does not recognize it.
+
+MySQL documents this collation as available from MySQL 8.0; MySQL 5.7 does not
+recognize it. MariaDB documents support for the MySQL 8.0 UCA 9 collation names
+starting with MariaDB 11.4.5, but collation mappings/behavior can differ. Do
+not assume that a MariaDB compatibility alias has identical sorting or
+comparison results; confirm the hosting version and compare semantics before
+using the import there. The exact InfinityFree database product/version is
+currently unknown.
 
 ## Post-upload checks
 

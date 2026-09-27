@@ -16,7 +16,7 @@ sessions, and MySQL. It assumes Linux, Nginx, PHP-FPM 8.4+, Composer, and MySQL
 - A TLS certificate and private key for the deployed hostname.
 - A release directory whose web root is only its `public/` subdirectory.
 
-Composer currently declares PHP `>=8.4` and no third-party runtime packages.
+Composer currently declares PHP `>=8.3` and no third-party runtime packages.
 The application requires `pdo_mysql` at runtime even though it is not currently
 declared as a Composer platform requirement.
 
