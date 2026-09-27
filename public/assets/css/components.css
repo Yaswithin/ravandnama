@@ -144,7 +144,6 @@
     background: var(--color-accent-soft);
 }
 
-.development-mark,
 .profile-avatar {
     display: grid;
     flex: 0 0 auto;
@@ -399,18 +398,6 @@
     max-width: 38rem;
     margin-inline: auto;
     padding-block: clamp(2rem, 7vw, 4rem);
-}
-
-.empty-state-mark {
-    display: grid;
-    width: 3rem;
-    aspect-ratio: 1;
-    place-items: center;
-    border: 1px solid var(--color-border);
-    border-radius: 50%;
-    color: var(--color-accent-strong);
-    background: var(--color-accent-soft);
-    font-weight: 600;
 }
 
 .empty-state-title {

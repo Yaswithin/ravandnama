@@ -35,8 +35,13 @@ function createField({ name, label, type, autocomplete, inputMode = null }) {
 export function renderLoginView({ onLogin, notice = null }) {
     const layout = createElement("div", "auth-layout");
     const intro = createElement("aside", "auth-intro");
+    const brand = createElement("div", "auth-brand");
+    const brandMark = document.createElement("img");
+    brandMark.src = "/assets/images/brand/ravandnama-mark-light-web.svg";
+    brandMark.alt = "نشان روندنما";
+    brand.append(brandMark, createElement("span", "", "زندگی با مسیر روشن‌تر"));
     intro.append(
-        createElement("span", "auth-kicker", "روندنما · زندگی با مسیر روشن‌تر"),
+        brand,
         createElement("h1", "auth-intro-title", "برای کارهای مهم، جا باز کن."),
         createElement("p", "auth-intro-copy", "با ورود به حساب خود، مسیر روزمره‌ات را با تمرکز بیشتری ادامه بده."),
         createElement("span", "auth-intro-caption", "یک قدم روشن، هر روز."),

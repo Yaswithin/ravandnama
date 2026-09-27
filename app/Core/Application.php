@@ -60,9 +60,8 @@ final class Application
             <body>
                 <div class="app-shell">
                     <header id="app-header" class="app-header">
-                        <a class="brand" href="#/" aria-label="صفحه اصلی روندنما">
-                            <span class="brand-mark" aria-hidden="true">ر</span>
-                            <span>روندنما</span>
+                        <a class="brand" href="#/" aria-label="روندنما، صفحه اصلی">
+                            <img class="brand-mark" src="/assets/images/brand/ravandnama-mark-dark-web.svg" alt="">
                         </a>
                     </header>
                     <div id="app-status" class="app-status" role="status" aria-live="polite" aria-atomic="true">

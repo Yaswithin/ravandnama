@@ -155,7 +155,6 @@ export function renderProjectsView({ getCsrfToken, refreshCsrfToken, onAuthentic
         if (state.projects.length === 0) {
             const empty = createElement("div", "projects-empty-state");
             empty.append(
-                createElement("span", "empty-state-mark", "ر"),
                 createElement("h2", "empty-state-title", "هنوز پروژه‌ای نساخته‌ای"),
                 createElement("p", "empty-state-copy", "برای موضوع‌های مهمت یک فضای روشن بساز و قدم بعدی را مشخص کن."),
             );

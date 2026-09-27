@@ -160,7 +160,6 @@ export function renderNotesView({ getCsrfToken, refreshCsrfToken, onAuthenticati
         if (state.notes.length === 0) {
             const empty = createElement("div", "notes-empty-state");
             empty.append(
-                createElement("span", "empty-state-mark", "ر"),
                 createElement("h2", "empty-state-title", "هنوز یادداشتی نداری"),
                 createElement("p", "notes-empty-copy", "هر فکری که می‌خواهی بعداً به آن برگردی، از همین‌جا ثبت کن."),
             );

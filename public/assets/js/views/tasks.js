@@ -244,7 +244,6 @@ export function renderTasksView({ getCsrfToken, refreshCsrfToken, onAuthenticati
             const empty = createElement("div", "task-empty-state");
             const noTasks = state.tasks.length === 0 && state.statusFilter === "all" && state.projectFilter === "all";
             empty.append(
-                createElement("span", "empty-state-mark", "ر"),
                 createElement("h2", "task-empty-title", noTasks ? "هنوز وظیفه‌ای ثبت نشده" : "وظیفه‌ای در این فهرست نیست"),
                 createElement("p", "task-empty-copy", noTasks
                     ? "یک قدم کوچک و روشن برای امروزت ثبت کن."

@@ -35,8 +35,13 @@ function createField({ name, label, type, autocomplete, maxLength = null, minLen
 export function renderRegisterView({ onRegister }) {
     const layout = createElement("div", "auth-layout auth-layout--register");
     const intro = createElement("aside", "auth-intro");
+    const brand = createElement("div", "auth-brand");
+    const brandMark = document.createElement("img");
+    brandMark.src = "/assets/images/brand/ravandnama-mark-light-web.svg";
+    brandMark.alt = "نشان روندنما";
+    brand.append(brandMark, createElement("span", "", "زندگی با مسیر روشن‌تر"));
     intro.append(
-        createElement("span", "auth-kicker", "روندنما · زندگی با مسیر روشن‌تر"),
+        brand,
         createElement("h1", "auth-intro-title", "شروعی ساده برای قدم‌های بعدی."),
         createElement("p", "auth-intro-copy", "حساب خودت را بساز و فضای شخصی‌ات را برای برنامه‌ریزی روزمره آماده کن."),
         createElement("span", "auth-intro-caption", "اطلاعاتت فقط برای حساب خودت استفاده می‌شود."),

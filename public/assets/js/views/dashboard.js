@@ -68,12 +68,11 @@ export function renderDashboardView(user) {
     const note = createElement("section", "development-note");
     note.setAttribute("aria-label", "وضعیت توسعه برنامه");
     note.append(
-        createElement("span", "development-mark", "ر"),
         createElement("div", "development-copy"),
     );
     note.querySelector(".development-copy").append(
-        createElement("h2", "development-title", "قدم‌به‌قدم پیش می‌رویم"),
-        createElement("p", "development-description", "بخش‌های وظایف و پروژه‌ها به‌زودی در دسترس خواهند بود."),
+        createElement("h2", "development-title", "مسیرت را همین‌جا ادامه بده"),
+        createElement("p", "development-description", "وظایف، پروژه‌ها و یادداشت‌هایت را در فضای شخصی خودت دنبال کن."),
     );
 
     page.append(heading, welcome, shortcutsHeading, shortcuts, note);
