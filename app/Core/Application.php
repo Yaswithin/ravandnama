@@ -48,6 +48,7 @@ final class Application
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <meta name="theme-color" content="#f3f5f7">
                 <title>روندنما | Ravandnama</title>
+                <link rel="icon" type="image/svg+xml" href="/assets/images/brand/favicon.svg">
                 <link rel="preconnect" href="https://fonts.googleapis.com">
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
                 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap">
@@ -61,7 +62,7 @@ final class Application
                 <div class="app-shell">
                     <header id="app-header" class="app-header">
                         <a class="brand" href="#/" aria-label="روندنما، صفحه اصلی">
-                            <img class="brand-mark" src="/assets/images/brand/ravandnama-mark-dark-web.svg" alt="">
+                            <img class="brand-wordmark" src="/assets/images/brand/ravandnama-wordmark-fa.svg" alt="">
                         </a>
                     </header>
                     <div id="app-status" class="app-status" role="status" aria-live="polite" aria-atomic="true">

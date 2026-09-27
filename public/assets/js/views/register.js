@@ -35,11 +35,10 @@ function createField({ name, label, type, autocomplete, maxLength = null, minLen
 export function renderRegisterView({ onRegister }) {
     const layout = createElement("div", "auth-layout auth-layout--register");
     const intro = createElement("aside", "auth-intro");
-    const brand = createElement("div", "auth-brand");
-    const brandMark = document.createElement("img");
-    brandMark.src = "/assets/images/brand/ravandnama-mark-light-web.svg";
-    brandMark.alt = "نشان روندنما";
-    brand.append(brandMark, createElement("span", "", "زندگی با مسیر روشن‌تر"));
+    const brand = document.createElement("img");
+    brand.className = "auth-wordmark";
+    brand.src = "/assets/images/brand/ravandnama-wordmark-fa-light.svg";
+    brand.alt = "روندنما";
     intro.append(
         brand,
         createElement("h1", "auth-intro-title", "شروعی ساده برای قدم‌های بعدی."),
