@@ -66,7 +66,7 @@ export function renderDashboardView(user) {
     );
 
     const note = createElement("section", "development-note");
-    note.setAttribute("aria-label", "وضعیت توسعه برنامه");
+    note.setAttribute("aria-label", "امکانات در دسترس برنامه");
     note.append(
         createElement("div", "development-copy"),
     );
