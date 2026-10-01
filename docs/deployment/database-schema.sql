@@ -2,7 +2,7 @@
 -- Generated from database/migrate.php and database/migrations/*.php.
 -- Select an empty database before importing. Do not import into an existing
 -- application database or rerun after a partial/successful import.
--- Requires utf8mb4_0900_ai_ci support; confirm the hosting engine first.
+-- Uses utf8mb4_unicode_ci for MySQL/MariaDB compatibility.
 -- No production data, accounts, credentials, or environment settings included.
 
 CREATE TABLE IF NOT EXISTS migrations (
@@ -11,13 +11,14 @@ CREATE TABLE IF NOT EXISTS migrations (
     PRIMARY KEY (migration)
 ) ENGINE=InnoDB
   DEFAULT CHARACTER SET=utf8mb4
-  COLLATE=utf8mb4_0900_ai_ci;
+  COLLATE=utf8mb4_unicode_ci;
 
 -- 202609260001_create_users_table.php
 CREATE TABLE IF NOT EXISTS users (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     name VARCHAR(120) NOT NULL,
     email VARCHAR(254) NOT NULL,
+    timezone VARCHAR(64) NOT NULL DEFAULT 'Asia/Tehran',
     password_hash VARCHAR(255) NOT NULL,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
@@ -26,7 +27,7 @@ CREATE TABLE IF NOT EXISTS users (
     UNIQUE KEY users_email_unique (email)
 ) ENGINE=InnoDB
   DEFAULT CHARACTER SET=utf8mb4
-  COLLATE=utf8mb4_0900_ai_ci;
+  COLLATE=utf8mb4_unicode_ci;
 
 -- 202609260002_create_tasks_table.php
 CREATE TABLE IF NOT EXISTS tasks (
@@ -36,6 +37,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     description TEXT NULL,
     status ENUM('pending', 'completed') NOT NULL DEFAULT 'pending',
     due_at DATETIME(6) NULL,
+    due_at_utc DATETIME(6) NULL,
     completed_at DATETIME(6) NULL,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
@@ -48,7 +50,7 @@ CREATE TABLE IF NOT EXISTS tasks (
         ON DELETE CASCADE
 ) ENGINE=InnoDB
   DEFAULT CHARACTER SET=utf8mb4
-  COLLATE=utf8mb4_0900_ai_ci;
+  COLLATE=utf8mb4_unicode_ci;
 
 -- 202609260003_create_projects_table.php
 CREATE TABLE IF NOT EXISTS projects (
@@ -66,7 +68,7 @@ CREATE TABLE IF NOT EXISTS projects (
         ON DELETE CASCADE
 ) ENGINE=InnoDB
   DEFAULT CHARACTER SET=utf8mb4
-  COLLATE=utf8mb4_0900_ai_ci;
+  COLLATE=utf8mb4_unicode_ci;
 
 -- 202609260004_add_project_id_to_tasks_table.php
 ALTER TABLE tasks
@@ -92,11 +94,13 @@ CREATE TABLE IF NOT EXISTS notes (
         ON DELETE CASCADE
 ) ENGINE=InnoDB
   DEFAULT CHARACTER SET=utf8mb4
-  COLLATE=utf8mb4_0900_ai_ci;
+  COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO migrations (migration) VALUES
     ('202609260001_create_users_table'),
     ('202609260002_create_tasks_table'),
     ('202609260003_create_projects_table'),
     ('202609260004_add_project_id_to_tasks_table'),
-    ('202609260005_create_notes_table');
+    ('202609260005_create_notes_table'),
+    ('202609260006_add_timezone_to_users_table'),
+    ('202609290001_add_due_at_utc_to_tasks_table');

@@ -2,17 +2,17 @@
 
 This guide describes the current Ravandnama architecture: a PHP application
 served by `public/index.php`, static files in `public/assets/`, server-side PHP
-sessions, and MySQL. It assumes Linux, Nginx, PHP-FPM 8.4+, Composer, and MySQL
+sessions, and MySQL. It assumes Linux, Nginx, PHP-FPM 8.3+, Composer, and MySQL
 8+. It does not require Docker or a separate frontend build.
 
 ## Prerequisites
 
-- Linux with Nginx and PHP-FPM 8.4 or later.
+- Linux with Nginx and PHP-FPM 8.3 or later.
 - PHP extensions: PDO, `pdo_mysql`, and sessions. JSON and password hashing
   support are also required by the runtime. Verify enabled modules with
   `php -m` for CLI and the PHP-FPM service separately.
 - Composer, for installing dependencies and generating `vendor/autoload.php`.
-- MySQL 8+ with InnoDB and `utf8mb4_0900_ai_ci` support.
+- MySQL 8+ with InnoDB and `utf8mb4_unicode_ci` support.
 - A TLS certificate and private key for the deployed hostname.
 - A release directory whose web root is only its `public/` subdirectory.
 
@@ -63,7 +63,7 @@ for a feature the app does not have.
    composer install --no-dev --optimize-autoloader --no-interaction
    ```
 
-3. Create a MySQL 8 database with `utf8mb4` and `utf8mb4_0900_ai_ci`. Supply
+3. Create a MySQL 8 database with `utf8mb4` and `utf8mb4_unicode_ci`. Supply
    `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD` to the
    migration command and PHP-FPM. The migration account needs schema DDL and
    migration-table read/write privileges. The running app currently uses the

@@ -4,9 +4,9 @@ Ravandnama is an open-source personal life management application.
 
 ## Requirements
 
-- PHP 8.4 or newer
+- PHP 8.3 or newer (the version declared in `composer.json`)
 - Composer
-- MySQL 8 or newer (required for database-backed endpoints)
+- MySQL 8 or newer, or MariaDB (required for database-backed endpoints)
 
 ## Local setup
 
@@ -59,7 +59,7 @@ Create a MySQL 8 database if it does not already exist:
 ```sql
 CREATE DATABASE IF NOT EXISTS ravandnama
     CHARACTER SET utf8mb4
-    COLLATE utf8mb4_0900_ai_ci;
+    COLLATE utf8mb4_unicode_ci;
 ```
 
 Set `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD` in
@@ -133,7 +133,12 @@ the request uses HTTPS.
 
 - `POST /api/auth/login` accepts JSON containing `email` and `password` and
   returns the public user fields on success.
-- `GET /api/auth/me` returns the current public user or `401` if unauthenticated.
+- `GET /api/auth/me` returns the current public user, including the saved IANA
+  `timezone`, or `401` if unauthenticated.
+- `PUT /api/auth/me` accepts `{"timezone":"Asia/Tehran"}` and updates only the
+  authenticated user's timezone. It requires the session cookie and CSRF token.
+- `GET /api/auth/timezones` returns the PHP-supported timezone identifier list
+  for the authenticated Profile selector.
 - `POST /api/auth/logout` clears the server session and expires its cookie.
 
 Send the session cookie received from login with later requests. State-changing
@@ -162,6 +167,12 @@ message. The token remains in session when Login regenerates the session ID,
 because the session data is preserved; Logout destroys the session and token.
 `SameSite=Lax` is useful defense in depth, but does not replace CSRF validation.
 
+New accounts and existing accounts default to `Asia/Tehran`. Profile timezone
+updates accept only identifiers in PHP's timezone database. This saved IANA
+timezone is authoritative for interpreting and displaying task due dates; it is
+never inferred from the browser. See [Tasks API](#tasks-api) for the canonical
+due-date contract.
+
 ## Auth regression checks
 
 With `.env` configured and the database migrations applied, run the repeatable
@@ -174,6 +185,19 @@ php tests/run-auth-regression.php
 The suite makes one temporary user with a unique email and removes it and its
 test session when finished. It checks Register, Login, `/me`, Logout, CSRF,
 password hashing, and session security settings without adding a test library.
+
+Timezone validation has a MySQL-independent regression check:
+
+```bash
+php tests/run-timezone-regression.php
+```
+
+The authenticated Profile regression suite requires the project migrations to
+be applied to the configured local test database:
+
+```bash
+php tests/run-profile-regression.php
+```
 
 ## Tasks API
 
@@ -196,20 +220,44 @@ Create a task with JSON:
 {
   "title": "Study English",
   "description": "Practice for 30 minutes",
-  "due_at": "2026-09-27 18:00:00",
+  "due_at_utc": "2026-09-30T18:30:00+03:30",
   "project_id": 3
 }
 ```
 
 `title` is required and limited to 200 characters. `description` is optional,
-trimmed, and limited to 10,000 characters. `due_at` is optional and accepts
-`Y-m-d H:i:s` (for example `2026-09-27 18:00:00`) or `null`. It has no timezone
-offset and is interpreted in the PHP application's configured local timezone.
+trimmed, and limited to 10,000 characters. `due_at` is the legacy nullable
+`Y-m-d H:i:s` field. It is a timezone-less wall-clock value retained for older
+clients and historical records. The prior task form used the browser's
+`datetime-local` value, while the earlier API documentation described the PHP
+configured timezone; neither the request nor the row records which timezone was
+used. Do not reinterpret existing `due_at` values as UTC or assign the current
+profile timezone to them.
+
+The current task form sends `due_at_utc`: either `null` or an RFC3339 instant
+with an explicit `Z` or numeric offset, for example
+`2026-09-30T18:30:00+03:30`. The backend validates and normalizes this value to
+UTC before storing its components in `DATETIME(6)`. Offsets must be known;
+`-00:00`, timezone-less values, invalid dates, and precision beyond
+milliseconds are rejected with `422`. Responses serialize `due_at_utc` as a
+canonical UTC instant such as `2026-09-30T15:00:00Z` or `null`. Existing
+non-null `due_at` values are never backfilled or changed by this flow.
+
+The task due-date control is Jalali-first: the user picks a Jalali date and a
+24-hour time, which the client resolves in the saved IANA timezone before
+sending `due_at_utc`. Gregorian dates are shown as a secondary reference. A
+local time that does not exist (spring-forward gap) or occurs twice (fall-back
+fold) is rejected with a recovery message instead of being guessed. Legacy rows
+that only have `due_at` are displayed with their original wall-clock components
+and no timezone is assigned.
+
 New tasks start as `pending`. Send `status: "completed"` or
 `status: "pending"` in a `PUT` request to change completion state; clients
 cannot set `completed_at` directly. Completion timestamps are managed by the
 service. `PUT` is a partial update: omitted fields retain their current values;
-send `null` to clear `description`, `due_at`, or `project_id`. `project_id` is
+send `null` to clear `description`, `due_at`, `due_at_utc`, or `project_id`.
+The current UI preserves legacy `due_at` when setting or editing `due_at_utc`;
+its explicit Clear action clears both date fields. `project_id` is
 optional and may be `null`; a positive integer assigns the Task to a Project
 owned by the authenticated user. Inaccessible or nonexistent Projects return
 the same `404` response. Omitting `project_id` when creating a Task leaves it
@@ -225,7 +273,7 @@ For example, to complete a task:
 
 Successful responses use the standard `{ "success": true, "data": ... }`
 envelope. Task representations include `id`, `project_id`, `title`,
-`description`, `status`, `due_at`, `completed_at`, `created_at`, and `updated_at`; the internal
+`description`, `status`, legacy `due_at`, canonical `due_at_utc`, `completed_at`, `created_at`, and `updated_at`; the internal
 `user_id` is not returned. Lists contain only the current user's tasks. Every
 single-task lookup, update, and delete scopes by both task ID and authenticated
 user ID; nonexistent and other users' tasks both return `404`.
@@ -242,7 +290,8 @@ Create returns `201` with the created task:
       "title": "Study English",
       "description": "Practice for 30 minutes",
       "status": "pending",
-      "due_at": "2026-09-27 18:00:00.000000",
+      "due_at": null,
+      "due_at_utc": "2026-09-30T15:00:00Z",
       "completed_at": null,
       "created_at": "2026-09-26 12:00:00.000000",
       "updated_at": "2026-09-26 12:00:00.000000"
