@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Core\UtcInstant;
 use App\Models\Task;
 use App\Repositories\TaskRepository;
 use App\Repositories\ProjectRepository;
@@ -25,10 +26,11 @@ final class TaskService
     /** @param array<string, mixed> $input */
     public function createForUser(int $userId, array $input): Task
     {
-        $errors = $this->unknownFields($input, ['title', 'description', 'due_at', 'project_id']);
+        $errors = $this->unknownFields($input, ['title', 'description', 'due_at', 'due_at_utc', 'project_id']);
         $title = $this->validatedTitle($input, $errors, required: true);
         $description = $this->validatedDescription($input, $errors);
         $dueAt = $this->validatedDueAt($input, $errors);
+        $dueAtUtc = $this->validatedDueAtUtc($input, $errors);
         $projectId = $this->validatedProjectId($input, $errors);
 
         if ($errors !== []) {
@@ -37,7 +39,7 @@ final class TaskService
 
         $this->assertProjectOwned($projectId, $userId);
 
-        return $this->tasks->create($userId, $title, $description, $dueAt, $projectId);
+        return $this->tasks->create($userId, $title, $description, $dueAt, $dueAtUtc, $projectId);
     }
 
     /** @return list<Task> */
@@ -60,7 +62,7 @@ final class TaskService
             return null;
         }
 
-        $errors = $this->unknownFields($input, ['title', 'description', 'due_at', 'status', 'project_id']);
+        $errors = $this->unknownFields($input, ['title', 'description', 'due_at', 'due_at_utc', 'status', 'project_id']);
 
         if ($input === []) {
             $errors['body'] = 'At least one task field must be provided.';
@@ -73,6 +75,9 @@ final class TaskService
         $dueAt = array_key_exists('due_at', $input)
             ? $this->validatedDueAt($input, $errors)
             : $current->dueAt;
+        $dueAtUtc = array_key_exists('due_at_utc', $input)
+            ? $this->validatedDueAtUtc($input, $errors)
+            : $current->dueAtUtc;
         $projectId = array_key_exists('project_id', $input)
             ? $this->validatedProjectId($input, $errors)
             : $current->projectId;
@@ -107,6 +112,7 @@ final class TaskService
             $description,
             $status,
             $dueAt,
+            $dueAtUtc,
             $completedAt,
             $projectId,
         );
@@ -193,6 +199,29 @@ final class TaskService
         }
 
         return $input['due_at'];
+    }
+
+    /** @param array<string, mixed> $input @param array<string, string> $errors */
+    private function validatedDueAtUtc(array $input, array &$errors): ?string
+    {
+        if (!array_key_exists('due_at_utc', $input) || $input['due_at_utc'] === null) {
+            return null;
+        }
+
+        if (!is_string($input['due_at_utc'])) {
+            $errors['due_at_utc'] = 'Due date must be an RFC3339 string with an explicit timezone or null.';
+
+            return null;
+        }
+
+        $normalized = UtcInstant::fromRfc3339($input['due_at_utc']);
+        if ($normalized === null) {
+            $errors['due_at_utc'] = 'Due date must be a valid RFC3339 instant with an explicit timezone and supported precision.';
+
+            return null;
+        }
+
+        return $normalized;
     }
 
     /** @param array<string, mixed> $input @param array<string, string> $errors */

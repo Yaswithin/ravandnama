@@ -1,34 +1,22 @@
 import * as projectsApi from "../api/projects.js";
 import * as tasksApi from "../api/tasks.js";
 import { ApiError } from "../api/client.js";
+import { createDueDateField } from "../components/due-date-field.js";
 import { clearFeedback, setFieldErrors, showFeedback } from "../components/feedback.js";
+import {
+    formatGregorianLong,
+    formatUserDateTime,
+    jalaliToGregorian,
+    legacyWallClockToDisplay,
+    localDateTimeToUtc,
+    utcToUserLocal,
+} from "../utils/date-time.js";
 
 function createElement(tag, className, text = null) {
     const element = document.createElement(tag);
     if (className) element.className = className;
     if (text !== null) element.textContent = text;
     return element;
-}
-
-function localDateInput(value) {
-    if (typeof value !== "string") return "";
-    const match = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})(?:\.\d+)?$/.exec(value);
-    return match ? `${match[1]}T${match[2]}` : "";
-}
-
-function displayDate(value) {
-    if (typeof value !== "string") return null;
-    const match = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?$/.exec(value);
-    if (!match) return value;
-
-    const [, year, month, day, hour, minute, second = "0"] = match;
-    const date = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second));
-    if (Number.isNaN(date.getTime())) return value;
-
-    return new Intl.DateTimeFormat("fa-IR", {
-        dateStyle: "medium",
-        timeStyle: "short",
-    }).format(date);
 }
 
 function translateValidationErrors(errors) {
@@ -43,13 +31,15 @@ function translateValidationErrors(errors) {
     if (typeof errors.description === "string") {
         translated.description = "توضیحات را بررسی کن؛ حداکثر ۱۰۰۰۰ نویسه مجاز است.";
     }
-    if (typeof errors.due_at === "string") translated.due_at = "موعد معتبر نیست؛ تاریخ و ساعت را دوباره انتخاب کن.";
+    if (typeof errors.due_at === "string" || typeof errors.due_at_utc === "string") {
+        translated.due_at_utc = "موعد معتبر نیست؛ تاریخ، ساعت و منطقهٔ زمانی را بررسی کن.";
+    }
     if (typeof errors.project_id === "string") translated.project_id = "پروژه انتخاب‌شده معتبر نیست. فهرست پروژه‌ها را تازه کن.";
     if (typeof errors.status === "string") translated.status = "وضعیت انتخاب‌شده معتبر نیست.";
     return translated;
 }
 
-export function renderTasksView({ getCsrfToken, refreshCsrfToken, onAuthenticationExpired }) {
+export function renderTasksView({ timeZone, getCsrfToken, refreshCsrfToken, onAuthenticationExpired }) {
     const page = createElement("div", "workspace-page tasks-page");
     const heading = createElement("div", "tasks-heading page-heading");
     const headingCopy = createElement("div", "page-heading-copy");
@@ -125,8 +115,7 @@ export function renderTasksView({ getCsrfToken, refreshCsrfToken, onAuthenticati
 
     const titleField = createField({ name: "title", id: "task-title", label: "عنوان", type: "text", required: true });
     const descriptionField = createField({ name: "description", id: "task-description", label: "توضیحات", type: "textarea" });
-    const dueField = createField({ name: "due_at", id: "task-due-at", label: "موعد", type: "datetime-local" });
-    dueField.input.step = "1";
+    const dueDateField = createDueDateField({ timeZone });
 
     const projectField = createField({ name: "project_id", id: "task-project-id", label: "پروژه", type: "select" });
     const statusField = createField({ name: "status", id: "task-status", label: "وضعیت", type: "select" });
@@ -140,7 +129,7 @@ export function renderTasksView({ getCsrfToken, refreshCsrfToken, onAuthenticati
     submitButton.type = "submit";
     formActions.append(cancelButton, submitButton);
     form.append(formHeader, formFeedback, titleField.wrapper, descriptionField.wrapper,
-        projectField.wrapper, dueField.wrapper, statusField.wrapper, formActions);
+        projectField.wrapper, dueDateField.wrapper, statusField.wrapper, formActions);
     dialog.append(form);
 
     page.append(heading, feedback, projectNotice, filters, taskCount, taskListRegion, dialog);
@@ -283,13 +272,32 @@ export function renderTasksView({ getCsrfToken, refreshCsrfToken, onAuthenticati
         }
 
         const metadata = createElement("div", "task-card-metadata");
-        if (task.due_at) {
+        if (task.due_at_utc || task.due_at) {
             const due = createElement("p", "task-card-meta");
             due.append(createElement("span", "task-meta-label", "موعد: "));
             const time = document.createElement("time");
-            time.dateTime = task.due_at.replace(" ", "T");
-            time.textContent = displayDate(task.due_at) ?? task.due_at;
+            const secondary = createElement("span", "task-due-secondary");
+            const dueTimezone = createElement("span", "task-due-timezone");
+            try {
+                if (typeof task.due_at_utc === "string" && task.due_at_utc !== "") {
+                    const local = utcToUserLocal(task.due_at_utc, timeZone);
+                    time.dateTime = task.due_at_utc;
+                    time.textContent = formatUserDateTime(task.due_at_utc, timeZone);
+                    secondary.textContent = formatGregorianLong(local.gregorianDate);
+                    dueTimezone.textContent = timeZone;
+                } else {
+                    const legacy = legacyWallClockToDisplay(task.due_at);
+                    time.dateTime = `${legacy.gregorianDate}T${legacy.localTime}`;
+                    time.textContent = legacy.primary;
+                    secondary.textContent = legacy.secondary;
+                    due.append(createElement("span", "task-due-legacy", "زمان قدیمی · منطقهٔ زمانی نامشخص"));
+                }
+            } catch {
+                time.textContent = "موعد ذخیره‌شده قابل نمایش نیست";
+            }
             due.append(time);
+            if (secondary.textContent) due.append(secondary);
+            if (dueTimezone.textContent) due.append(dueTimezone);
             metadata.append(due);
         }
 
@@ -374,7 +382,7 @@ export function renderTasksView({ getCsrfToken, refreshCsrfToken, onAuthenticati
         formTitle.textContent = task ? "ویرایش وظیفه" : "ساخت وظیفه";
         titleField.input.value = task?.title ?? "";
         descriptionField.input.value = task?.description ?? "";
-        dueField.input.value = localDateInput(task?.due_at);
+        dueDateField.setTask(task);
         renderProjectSelector(task?.project_id === null || task?.project_id === undefined ? "" : String(task.project_id));
         statusField.wrapper.hidden = !task;
         if (task) renderStatusSelector(task.status);
@@ -406,6 +414,7 @@ export function renderTasksView({ getCsrfToken, refreshCsrfToken, onAuthenticati
 
     function formReset() {
         form.reset();
+        dueDateField.setTask(null);
         setFieldErrors(form);
         clearFeedback(formFeedback);
         state.activeTask = null;
@@ -513,11 +522,12 @@ export function renderTasksView({ getCsrfToken, refreshCsrfToken, onAuthenticati
     async function saveTask(event) {
         event.preventDefault();
         clearFeedback(formFeedback);
+        dueDateField.clearError();
         setFieldErrors(form);
 
         const title = titleField.input.value.trim();
         const description = descriptionField.input.value.trim();
-        const dueValue = dueField.input.value;
+        const dueIntent = dueDateField.getIntent();
         const validation = {};
         if (title === "") validation.title = "عنوان وظیفه الزامی است.";
         if ([...title].length > 200) validation.title = "عنوان حداکثر ۲۰۰ نویسه باشد.";
@@ -527,12 +537,39 @@ export function renderTasksView({ getCsrfToken, refreshCsrfToken, onAuthenticati
         if (projectId !== null && (!Number.isInteger(projectId) || projectId < 1 || !projectById(projectId))) {
             validation.project_id = "پروژه انتخاب‌شده معتبر نیست.";
         }
-        if (dueValue !== "" && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(dueValue)) {
-            validation.due_at = "تاریخ و ساعت موعد را بررسی کن.";
+        let dueAtUtc = null;
+        if (dueIntent.kind === "set") {
+            if (typeof dueIntent.jalaliDate !== "string") {
+                validation.due_at_utc = "تاریخ شمسی موعد را انتخاب کن.";
+            } else if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(dueIntent.time)) {
+                validation.due_at_utc = "ساعت موعد را به شکل ۲۴ ساعته انتخاب کن.";
+            } else {
+                try {
+                    const gregorianDate = jalaliToGregorian(dueIntent.jalaliDate);
+                    const gregorianYear = Number(gregorianDate.slice(0, 4));
+                    if (gregorianYear < 1000) {
+                        validation.due_at_utc = "این تاریخ خارج از محدودهٔ قابل ذخیره است.";
+                    } else {
+                        dueAtUtc = localDateTimeToUtc(gregorianDate, `${dueIntent.time}:00`, timeZone);
+                    }
+                } catch (error) {
+                    const message = error instanceof RangeError && error.message.includes("does not exist")
+                        ? "این ساعت در منطقهٔ زمانی انتخاب‌شده وجود ندارد. زمان دیگری انتخاب کن."
+                        : error instanceof RangeError && error.message.includes("ambiguous")
+                            ? "این ساعت در تغییر ساعت فصلی دو بار رخ می‌دهد. زمان دیگری انتخاب کن."
+                            : error instanceof RangeError
+                                ? "منطقهٔ زمانی حساب یا تاریخ انتخاب‌شده معتبر نیست."
+                                : "موعد معتبر نیست؛ تاریخ و ساعت را دوباره بررسی کن.";
+                    dueDateField.setError(message);
+                    dueDateField.focus();
+                    return;
+                }
+            }
         }
 
         if (Object.keys(validation).length > 0) {
             setFieldErrors(form, validation);
+            if (validation.due_at_utc) dueDateField.setError(validation.due_at_utc);
             showFeedback(formFeedback, "اطلاعات مشخص‌شده را اصلاح کن.", "error");
             setTimeout(() => form.querySelector('[aria-invalid="true"]')?.focus(), 0);
             return;
@@ -541,9 +578,13 @@ export function renderTasksView({ getCsrfToken, refreshCsrfToken, onAuthenticati
         const data = {
             title,
             description,
-            due_at: dueValue === "" ? null : dueValue.replace("T", " "),
             project_id: projectId,
         };
+        if (dueIntent.kind === "set") data.due_at_utc = dueAtUtc;
+        if (dueIntent.kind === "clear") {
+            data.due_at = null;
+            data.due_at_utc = null;
+        }
         if (state.activeTask) data.status = statusField.input.value;
 
         setBusyForm(true);
@@ -572,6 +613,7 @@ export function renderTasksView({ getCsrfToken, refreshCsrfToken, onAuthenticati
                 const hasFieldErrors = Object.keys(serverErrors).length > 0;
                 if (hasFieldErrors) {
                     setFieldErrors(form, serverErrors);
+                    if (serverErrors.due_at_utc) dueDateField.setError(serverErrors.due_at_utc);
                     setTimeout(() => form.querySelector('[aria-invalid="true"]')?.focus(), 0);
                 }
                 showFeedback(formFeedback, hasFieldErrors ? "اطلاعات مشخص‌شده را اصلاح کن." : message, "error");
@@ -618,8 +660,8 @@ export function renderTasksView({ getCsrfToken, refreshCsrfToken, onAuthenticati
         renderList();
     });
     createButton.addEventListener("click", () => openForm(null, createButton));
-    form.addEventListener("input", () => setFieldErrors(form));
-    form.addEventListener("change", () => setFieldErrors(form));
+    form.addEventListener("input", () => { dueDateField.clearError(); setFieldErrors(form); });
+    form.addEventListener("change", () => { dueDateField.clearError(); setFieldErrors(form); });
     form.addEventListener("submit", saveTask);
     dialog.addEventListener("close", () => {
         formReset();

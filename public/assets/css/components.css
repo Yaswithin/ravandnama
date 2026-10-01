@@ -849,6 +849,219 @@
     padding: clamp(1rem, 4vw, 1.75rem);
 }
 
+.due-date-field {
+    min-inline-size: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.due-date-legend {
+    margin-block-end: 0.35rem;
+    color: var(--color-text);
+    font-size: 0.92rem;
+    font-weight: 500;
+}
+
+.due-date-timezone,
+.due-date-gregorian,
+.due-date-time-equivalent,
+.due-date-legacy-notice {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 0.82rem;
+    overflow-wrap: anywhere;
+}
+
+.due-date-timezone {
+    margin-block-end: 0.45rem;
+}
+
+.due-date-timezone-value {
+    color: var(--color-accent-strong);
+    font-weight: 600;
+}
+
+.due-date-control-label {
+    display: block;
+    margin-block: 0.45rem 0.25rem;
+    color: var(--color-muted);
+    font-size: 0.84rem;
+}
+
+.due-date-trigger,
+.due-date-field input[type="text"] {
+    width: 100%;
+    min-height: 3rem;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    color: var(--color-text);
+    background: var(--color-surface);
+}
+
+.due-date-trigger {
+    text-align: start;
+    cursor: pointer;
+}
+
+.due-date-trigger:hover,
+.due-date-calendar-nav:hover,
+.due-date-day:not(:disabled):hover,
+.due-date-today:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent-strong);
+    background: var(--color-accent-soft);
+}
+
+.due-date-trigger:focus-visible,
+.due-date-calendar button:focus-visible,
+.due-date-field input[type="text"]:focus-visible {
+    border-color: var(--color-accent);
+    outline: 3px solid var(--color-accent-soft);
+    outline-offset: 1px;
+}
+
+.due-date-calendar {
+    display: grid;
+    gap: 0.6rem;
+    margin-block: 0.5rem;
+    padding: 0.7rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    background: var(--color-accent-soft);
+}
+
+.due-date-calendar[hidden] {
+    display: none;
+}
+
+.due-date-calendar-header {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.due-date-calendar-controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.35rem;
+}
+
+.due-date-calendar-heading {
+    margin: 0;
+    color: var(--color-text);
+    font-size: 0.95rem;
+    text-align: center;
+}
+
+.due-date-calendar-nav,
+.due-date-today {
+    min-height: 2.75rem;
+    padding-inline: 0.65rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.65rem;
+    color: var(--color-text);
+    background: var(--color-surface);
+    cursor: pointer;
+}
+
+.due-date-calendar-nav:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.due-date-calendar-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.18rem;
+}
+
+.due-date-weekday-row,
+.due-date-week-row {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.due-date-weekday {
+    display: grid;
+    min-height: 2rem;
+    place-items: center;
+    color: var(--color-muted);
+    font-size: 0.69rem;
+}
+
+.due-date-day-cell {
+    display: grid;
+    min-width: 0;
+    place-items: center;
+}
+
+.due-date-day {
+    width: min(100%, 2.75rem);
+    min-width: 2.35rem;
+    min-height: 2.75rem;
+    padding: 0.2rem;
+    border: 1px solid transparent;
+    border-radius: 0.7rem;
+    color: var(--color-text);
+    background: transparent;
+    cursor: pointer;
+}
+
+.due-date-day[aria-pressed="true"] {
+    border-color: var(--color-accent-strong);
+    color: var(--color-on-accent);
+    background: var(--color-accent-strong);
+    font-weight: 700;
+}
+
+.due-date-day[aria-current="date"]:not([aria-pressed="true"]) {
+    border-color: var(--color-accent);
+    color: var(--color-accent-strong);
+    font-weight: 700;
+}
+
+.due-date-day:disabled {
+    color: var(--color-muted);
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.due-date-gregorian {
+    margin-block: 0.15rem 0.4rem;
+}
+
+.due-date-time-equivalent {
+    margin-block: 0.25rem 0.4rem;
+}
+
+.due-date-legacy-notice {
+    color: var(--color-focus);
+}
+
+.due-date-error:not(:empty) {
+    display: block;
+    margin-block-start: 0.25rem;
+}
+
+.due-date-clear {
+    justify-self: start;
+    min-height: 2.75rem;
+    color: var(--color-danger);
+}
+
+.task-due-secondary,
+.task-due-timezone,
+.task-due-legacy {
+    color: var(--color-muted);
+    font-size: 0.75rem;
+}
+
+.task-due-legacy {
+    color: var(--color-focus);
+}
+
 .task-dialog-header {
     display: flex;
     align-items: flex-start;

@@ -13,11 +13,18 @@ final class TaskRepository
     {
     }
 
-    public function create(int $userId, string $title, ?string $description, ?string $dueAt, ?int $projectId): Task
+    public function create(
+        int $userId,
+        string $title,
+        ?string $description,
+        ?string $dueAt,
+        ?string $dueAtUtc,
+        ?int $projectId,
+    ): Task
     {
         $statement = $this->database->connection()->prepare(<<<'SQL'
-            INSERT INTO tasks (user_id, project_id, title, description, status, due_at)
-            VALUES (:user_id, :project_id, :title, :description, 'pending', :due_at)
+            INSERT INTO tasks (user_id, project_id, title, description, status, due_at, due_at_utc)
+            VALUES (:user_id, :project_id, :title, :description, 'pending', :due_at, :due_at_utc)
             SQL);
         $statement->execute([
             'user_id' => $userId,
@@ -25,6 +32,7 @@ final class TaskRepository
             'title' => $title,
             'description' => $description,
             'due_at' => $dueAt,
+            'due_at_utc' => $dueAtUtc,
         ]);
 
         $task = $this->findByIdForUser((int) $this->database->connection()->lastInsertId(), $userId);
@@ -39,7 +47,7 @@ final class TaskRepository
     public function findByIdForUser(int $id, int $userId): ?Task
     {
         $statement = $this->database->connection()->prepare(<<<'SQL'
-            SELECT id, user_id, project_id, title, description, status, due_at,
+            SELECT id, user_id, project_id, title, description, status, due_at, due_at_utc,
                    completed_at, created_at, updated_at
             FROM tasks
             WHERE id = :id AND user_id = :user_id
@@ -55,7 +63,7 @@ final class TaskRepository
     public function findAllForUser(int $userId): array
     {
         $statement = $this->database->connection()->prepare(<<<'SQL'
-            SELECT id, user_id, project_id, title, description, status, due_at,
+            SELECT id, user_id, project_id, title, description, status, due_at, due_at_utc,
                    completed_at, created_at, updated_at
             FROM tasks
             WHERE user_id = :user_id
@@ -73,6 +81,7 @@ final class TaskRepository
         ?string $description,
         string $status,
         ?string $dueAt,
+        ?string $dueAtUtc,
         ?string $completedAt,
         ?int $projectId,
     ): ?Task {
@@ -83,6 +92,7 @@ final class TaskRepository
                 status = :status,
                 project_id = :project_id,
                 due_at = :due_at,
+                due_at_utc = :due_at_utc,
                 completed_at = :completed_at,
                 updated_at = CURRENT_TIMESTAMP(6)
             WHERE id = :id AND user_id = :user_id
@@ -93,6 +103,7 @@ final class TaskRepository
             'status' => $status,
             'project_id' => $projectId,
             'due_at' => $dueAt,
+            'due_at_utc' => $dueAtUtc,
             'completed_at' => $completedAt,
             'id' => $id,
             'user_id' => $userId,

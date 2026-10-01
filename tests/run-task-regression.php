@@ -95,6 +95,7 @@ try {
     $assert($status === 201 && is_int($taskAId), 'Create returns 201 and a task');
     $assert($created['data']['task']['title'] === 'Task A' && $created['data']['task']['status'] === 'pending', 'Create trims title and defaults status to pending');
     $assert($created['data']['task']['description'] === 'Initial description' && $created['data']['task']['due_at'] === '2026-09-27 18:00:00.000000', 'Create normalizes optional fields and due date');
+    $assert(array_key_exists('due_at_utc', $created['data']['task']) && $created['data']['task']['due_at_utc'] === null, 'Legacy-only create returns a null canonical UTC due date');
     $assert(array_key_exists('project_id', $created['data']['task']) && $created['data']['task']['project_id'] === null, 'Create without project returns a null project_id');
     $assert(!array_key_exists('user_id', $created['data']['task']), 'Public task representation omits internal user_id');
     $assert(!str_contains($createBody, 'password') && !str_contains($createBody, 'csrf'), 'Task response excludes auth and CSRF data');
@@ -108,6 +109,19 @@ try {
     if (is_int($assignedCreateId)) {
         $tasksRepo = new App\Repositories\TaskRepository($database);
         $tasksRepo->deleteForUser($assignedCreateId, $userA->id);
+    }
+
+    [$status, , $canonicalCreate] = $call($router, 'POST', '/api/tasks', $headers($token), $body([
+        'title' => 'Task with canonical due date',
+        'due_at_utc' => '2026-09-30T18:30:00+03:30',
+    ]));
+    $canonicalCreateId = $canonicalCreate['data']['task']['id'] ?? null;
+    $assert($status === 201 && is_int($canonicalCreateId), 'Create accepts a timezone-explicit canonical due date');
+    $assert(($canonicalCreate['data']['task']['due_at_utc'] ?? null) === '2026-09-30T15:00:00Z', 'Create normalizes canonical due date to UTC RFC3339');
+    $assert(array_key_exists('due_at', $canonicalCreate['data']['task']) && $canonicalCreate['data']['task']['due_at'] === null, 'Canonical create leaves legacy due_at null');
+    if (is_int($canonicalCreateId)) {
+        $tasksRepo = new App\Repositories\TaskRepository($database);
+        $tasksRepo->deleteForUser($canonicalCreateId, $userA->id);
     }
 
     foreach ([['abc', 'string'], [-1, 'negative'], [1.5, 'float']] as [$invalidProjectId, $label]) {
@@ -130,6 +144,12 @@ try {
     [$status, , $ownTask] = $call($router, 'GET', '/api/tasks/' . $taskAId);
     $assert($status === 200 && ($ownTask['data']['task']['id'] ?? null) === $taskAId, 'Get own task succeeds through route parameter');
 
+    [$status, , $canonicalUpdate] = $call($router, 'PUT', '/api/tasks/' . $taskAId, $headers($token), $body([
+        'due_at_utc' => '2026-10-01T00:00:00Z',
+    ]));
+    $assert($status === 200 && ($canonicalUpdate['data']['task']['due_at_utc'] ?? null) === '2026-10-01T00:00:00Z', 'Update accepts canonical UTC due date');
+    $assert(($canonicalUpdate['data']['task']['due_at'] ?? null) === '2026-09-27 18:00:00.000000', 'Canonical update preserves the legacy due_at value');
+
     [$status] = $call($router, 'PUT', '/api/tasks/' . $taskAId, $headers(), $body(['title' => 'No token']));
     $assert($status === 403, 'PUT without CSRF token returns 403');
     [$status] = $call($router, 'DELETE', '/api/tasks/' . $taskAId, []);
@@ -142,6 +162,7 @@ try {
     ]));
     $assert($status === 200 && $updated['data']['task']['title'] === 'Updated Task A', 'PUT partially updates title');
     $assert($updated['data']['task']['description'] === 'Updated description' && $updated['data']['task']['due_at'] === null, 'PUT updates description and clears due date');
+    $assert(($updated['data']['task']['due_at_utc'] ?? null) === '2026-10-01T00:00:00Z', 'Legacy due_at clear preserves an omitted canonical due date');
     $assert($updated['data']['task']['updated_at'] !== $created['data']['task']['updated_at'], 'Update changes updated_at');
 
     [$status, , $assignedUpdate] = $call($router, 'PUT', '/api/tasks/' . $taskAId, $headers($token), $body(['project_id' => $projectA->id]));
@@ -157,6 +178,22 @@ try {
     $assert($status === 422, 'Invalid status returns 422');
     [$status] = $call($router, 'PUT', '/api/tasks/' . $taskAId, $headers($token), $body(['due_at' => '2026-02-31 25:61:00']));
     $assert($status === 422, 'Invalid due_at returns 422');
+    foreach ([
+        '2026-09-30T18:30:00',
+        '2026-02-31T18:30:00Z',
+        '2026-09-30T18:30:00-00:00',
+        '2026-09-30T18:30:00.1234Z',
+    ] as $invalidDueAtUtc) {
+        [$status] = $call($router, 'PUT', '/api/tasks/' . $taskAId, $headers($token), $body(['due_at_utc' => $invalidDueAtUtc]));
+        $assert($status === 422, 'Invalid due_at_utc returns 422: ' . $invalidDueAtUtc);
+    }
+    [$status, , $clearedCanonical] = $call($router, 'PUT', '/api/tasks/' . $taskAId, $headers($token), $body(['due_at_utc' => null]));
+    $clearedCanonicalTask = $clearedCanonical['data']['task'] ?? null;
+    $assert($status === 200
+        && is_array($clearedCanonicalTask)
+        && array_key_exists('due_at_utc', $clearedCanonicalTask)
+        && $clearedCanonicalTask['due_at_utc'] === null,
+        'Explicit null clears canonical due_at_utc');
     [$status] = $call($router, 'PUT', '/api/tasks/' . $taskAId, $headers($token), '{}');
     $assert($status === 422, 'Empty partial update returns 422');
 
