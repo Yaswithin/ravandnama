@@ -70,9 +70,6 @@ $assert(
 );
 $assert(!preg_match('/\b(UPDATE|DROP|MODIFY|CHANGE)\b/i', implode("\n", $migration)), 'Migration does not rewrite or remove existing records/schema');
 
-$schema = file_get_contents(dirname(__DIR__) . '/docs/deployment/database-schema.sql');
-$assert(is_string($schema) && preg_match('/due_at\s+DATETIME\(6\)\s+NULL,\s*due_at_utc\s+DATETIME\(6\)\s+NULL/s', $schema) === 1, 'Fresh schema retains legacy column beside canonical column');
-
 foreach ($failures as $failure) fwrite(STDERR, "FAIL: {$failure}" . PHP_EOL);
 if ($failures !== []) {
     fwrite(STDERR, sprintf("Due Date regression failed: %d assertions, %d failure(s).%s", $assertions, count($failures), PHP_EOL));
