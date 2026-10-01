@@ -3,8 +3,9 @@
 declare(strict_types=1);
 
 use App\Core\Request;
+use App\Core\Environment;
 
-$configuredLimit = filter_var(getenv('API_MAX_BODY_BYTES'), FILTER_VALIDATE_INT);
+$configuredLimit = filter_var(Environment::get('API_MAX_BODY_BYTES'), FILTER_VALIDATE_INT);
 
 if (!is_int($configuredLimit)
     || $configuredLimit < 1

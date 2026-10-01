@@ -6,6 +6,19 @@ namespace App\Core;
 
 final class Environment
 {
+    public static function get(string $name, ?string $default = null): ?string
+    {
+        $value = getenv($name);
+
+        if (is_string($value)) {
+            return $value;
+        }
+
+        $value = $_ENV[$name] ?? null;
+
+        return is_string($value) ? $value : $default;
+    }
+
     public static function load(string $path): void
     {
         if (!is_file($path) || !is_readable($path)) {
@@ -29,7 +42,7 @@ final class Environment
             $name = trim($name);
             $value = trim($value);
 
-            if ($name === '' || getenv($name) !== false) {
+            if ($name === '' || self::get($name) !== null) {
                 continue;
             }
 
@@ -41,7 +54,10 @@ final class Environment
                 }
             }
 
-            putenv($name . '=' . $value);
+            if (function_exists('putenv')) {
+                putenv($name . '=' . $value);
+            }
+
             $_ENV[$name] = $value;
         }
     }
