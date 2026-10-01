@@ -1,4 +1,5 @@
 import { clearFeedback, setFieldErrors, showFeedback } from "../components/feedback.js";
+import { createPasswordVisibilityControl } from "../components/password-visibility.js";
 
 function createElement(tag, className, text = null) {
     const element = document.createElement(tag);
@@ -25,9 +26,17 @@ function createField({ name, label, type, autocomplete, maxLength = null, minLen
     if (minLength !== null) input.minLength = minLength;
     if (name === "email" || name === "password") input.dir = "ltr";
 
+    if (type === "password") {
+        const passwordShell = createElement("div", "password-input-shell");
+        passwordShell.append(input, createPasswordVisibilityControl(input, label));
+        wrapper.append(labelNode, passwordShell);
+    } else {
+        wrapper.append(labelNode, input);
+    }
+
     const error = createElement("span", "field-error");
     error.id = `${name}-error`;
-    wrapper.append(labelNode, input, error);
+    wrapper.append(error);
 
     return { wrapper, input };
 }
