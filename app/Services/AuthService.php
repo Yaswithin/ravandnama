@@ -81,10 +81,14 @@ final class AuthService
         }
 
         try {
-            return $this->users->create($name, $email, $passwordHash);
+            $user = $this->users->create($name, $email, $passwordHash);
         } catch (RepositoryDuplicateEmailException $exception) {
             throw new DuplicateEmailException($exception);
         }
+
+        $this->startAuthenticatedSession($user->id);
+
+        return $user;
     }
 
     public function login(string $email, string $password): User
@@ -110,8 +114,7 @@ final class AuthService
             throw new InvalidCredentialsException();
         }
 
-        $this->session->regenerate(true);
-        $this->session->set('auth.user_id', (int) $credentials['id']);
+        $this->startAuthenticatedSession((int) $credentials['id']);
 
         return User::fromRecord($credentials);
     }
@@ -121,5 +124,16 @@ final class AuthService
         $length = preg_match_all('/./us', $value);
 
         return $length === false ? strlen($value) : $length;
+    }
+
+    /**
+     * Establishes the authenticated session for a verified user.
+     *
+     * Shared by register() and login() so both flows use one session contract.
+     */
+    private function startAuthenticatedSession(int $userId): void
+    {
+        $this->session->regenerate(true);
+        $this->session->set('auth.user_id', $userId);
     }
 }

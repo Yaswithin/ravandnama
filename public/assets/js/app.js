@@ -157,8 +157,25 @@ function renderPage(page) {
 
 function displayActionError(error, ui, retryAction, action) {
     if (error instanceof ApiError && error.status === 422) {
-        ui.setErrors(error.errors ?? {});
-        ui.showError("اطلاعات واردشده را بررسی و اصلاح کنید.");
+        const messages = action === "register"
+            ? {
+                name: "نام را بررسی کن؛ این فیلد الزامی است و حداکثر ۱۲۰ نویسه دارد.",
+                email: "ایمیل معتبر وارد کن.",
+                password: "گذرواژه باید دست‌کم ۸ نویسه باشد.",
+            }
+            : {
+                email: "ایمیل معتبر وارد کن.",
+                password: "گذرواژه را وارد کن.",
+            };
+        const fieldErrors = Object.fromEntries(
+            Object.keys(error.errors ?? {})
+                .filter((field) => Object.hasOwn(messages, field))
+                .map((field) => [field, messages[field]]),
+        );
+        ui.setErrors(fieldErrors);
+        ui.showError(action === "register"
+            ? "اطلاعات ثبت‌نام را بررسی و اصلاح کنید."
+            : "اطلاعات ورود را بررسی و اصلاح کنید.");
         return;
     }
 
@@ -220,13 +237,13 @@ async function handleRegister(details, ui) {
 
     try {
         const token = getAuthState().csrfToken ?? await refreshCsrfToken();
-        await authApi.register(details, token);
-        setUnauthenticated();
-        pageNotice = {
-            kind: "success",
-            message: "ثبت‌نام با موفقیت انجام شد. حالا با ایمیل و گذرواژه وارد شوید.",
-        };
-        window.location.hash = "#/login";
+        const user = await authApi.register(details, token);
+
+        if (!user) throw new Error("The server did not return a user.");
+        setAuthenticatedUser(user);
+        pageNotice = null;
+        clearFeedback(statusRegion);
+        window.location.hash = "#/dashboard";
     } catch (error) {
         displayActionError(error, ui, submitAgain, "register");
     }

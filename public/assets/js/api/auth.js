@@ -27,12 +27,14 @@ export async function login(credentials, csrfToken) {
     return response?.data?.user ?? null;
 }
 
-export function register(details, csrfToken) {
-    return apiRequest("/api/auth/register", {
+export async function register(details, csrfToken) {
+    const response = await apiRequest("/api/auth/register", {
         method: "POST",
         body: details,
         csrfToken,
     });
+
+    return response?.data?.user ?? null;
 }
 
 export function logout(csrfToken) {

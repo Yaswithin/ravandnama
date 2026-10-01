@@ -94,21 +94,38 @@ try {
     $assert($session->get('csrf.token') === $token, 'CSRF token stored in session');
     $assert(!str_contains($csrfBody, session_id()), 'Session ID is absent from CSRF JSON response');
 
+    [$status] = $call($router, 'GET', '/api/auth/me');
+    $assert($status === 401, 'Me returns 401 before any registration');
+
     [$status] = $call($router, 'POST', '/api/auth/register', $jsonHeaders(), json_encode([
         'name' => 'Regression User', 'email' => $email, 'password' => $rawPassword,
     ], JSON_THROW_ON_ERROR));
     $assert($status === 403, 'Register rejects missing CSRF token');
+    $assert(!$session->has('auth.user_id'), 'Register without CSRF token does not authenticate a user');
 
     [$status] = $call($router, 'POST', '/api/auth/register', $jsonHeaders(str_repeat('0', 64)), json_encode([
         'name' => 'Regression User', 'email' => $email, 'password' => $rawPassword,
     ], JSON_THROW_ON_ERROR));
     $assert($status === 403, 'Register rejects invalid CSRF token');
+    $assert(!$session->has('auth.user_id'), 'Register with invalid CSRF token does not authenticate a user');
 
+    $sessionIdBeforeRegister = session_id();
     [$status, $body, $data] = $call($router, 'POST', '/api/auth/register', $jsonHeaders($token), json_encode([
         'name' => 'Regression User', 'email' => $email, 'password' => $rawPassword,
     ], JSON_THROW_ON_ERROR));
     $assert($status === 201, 'Register succeeds with valid CSRF token');
     $assert(!str_contains($body, $rawPassword) && !str_contains($body, 'password_hash') && !str_contains($body, session_id()), 'Register response excludes password, hash, and session ID');
+
+    $registeredUserId = $data['data']['user']['id'] ?? null;
+    $assert(is_int($registeredUserId) && $registeredUserId > 0, 'Register response exposes the created user ID');
+    $assert(session_id() !== $sessionIdBeforeRegister, 'Register regenerates session ID');
+    $assert($session->get('auth.user_id') === $registeredUserId, 'Register stores the created user ID in the session');
+    $assert($session->get('csrf.token') === $token, 'CSRF token survives registration session ID regeneration');
+
+    [$meStatus, , $meData, $meCacheControl] = $call($router, 'GET', '/api/auth/me');
+    $assert($meStatus === 200, 'Me succeeds immediately after registration without a separate login');
+    $assert(($meData['data']['user']['id'] ?? null) === $registeredUserId, 'Me returns the just-registered user');
+    $assert($meCacheControl === 'no-store', 'Post-registration Me response disables caching');
 
     $storedHash = $pdo->prepare('SELECT password_hash FROM users WHERE email = :email');
     $storedHash->execute(['email' => $email]);
@@ -136,9 +153,7 @@ try {
         'name' => 'Regression User', 'email' => 'not-an-email', 'password' => $rawPassword,
     ], JSON_THROW_ON_ERROR));
     $assert($status === 422, 'Register validates email');
-
-    [$status] = $call($router, 'GET', '/api/auth/me');
-    $assert($status === 401, 'Me returns 401 when unauthenticated');
+    $assert($session->get('auth.user_id') === $registeredUserId, 'Failed registrations leave the authenticated user unchanged');
 
     $sessionIdBeforeLogin = session_id();
     [$status, $loginBody] = $call($router, 'POST', '/api/auth/login', $jsonHeaders($token), json_encode([
@@ -198,8 +213,27 @@ try {
     $assert($status === 401, 'Me returns 401 after logout');
 
     [$status, , $anonCsrf] = $call($router, 'GET', '/api/auth/csrf');
-    [$logoutStatus] = $call($router, 'POST', '/api/auth/logout', $jsonHeaders($anonCsrf['data']['csrf_token'] ?? null));
-    $assert($status === 200 && $logoutStatus === 200, 'Unauthenticated logout has a predictable successful response');
+    $assert($status === 200, 'CSRF endpoint is reachable after logout');
+    $logoutStatus = null;
+
+    if ($status === 200) {
+        $reloginToken = $anonCsrf['data']['csrf_token'] ?? null;
+        $sessionIdBeforeRelogin = session_id();
+        [$loginStatus, , $reloginData] = $call($router, 'POST', '/api/auth/login', $jsonHeaders($reloginToken), json_encode([
+            'email' => $email, 'password' => $rawPassword,
+        ], JSON_THROW_ON_ERROR));
+        $assert($loginStatus === 200, 'Login still succeeds after register then logout');
+        $assert(session_id() !== $sessionIdBeforeRelogin, 'Post-logout login regenerates session ID');
+        $assert($session->get('auth.user_id') === $registeredUserId, 'Post-logout login stores the same user ID in the session');
+        $assert(($reloginData['data']['user']['id'] ?? null) === $registeredUserId, 'Post-logout login returns the same user');
+
+        [$reloginMeStatus] = $call($router, 'GET', '/api/auth/me');
+        $assert($reloginMeStatus === 200, 'Me succeeds after post-logout login');
+
+        [$logoutStatus] = $call($router, 'POST', '/api/auth/logout', $jsonHeaders($reloginToken));
+    }
+
+    $assert($logoutStatus === 200, 'Unauthenticated logout has a predictable successful response');
 
     $logSources = (string) file_get_contents(dirname(__DIR__) . '/app/Core/Csrf.php')
         . (string) file_get_contents(dirname(__DIR__) . '/routes/api.php');
