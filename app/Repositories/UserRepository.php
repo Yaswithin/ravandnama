@@ -17,7 +17,7 @@ final class UserRepository
     public function findByEmail(string $email): ?User
     {
         $statement = $this->database->connection()->prepare(
-            'SELECT id, name, email FROM users WHERE email = :email LIMIT 1'
+            'SELECT id, name, email, timezone FROM users WHERE email = :email LIMIT 1'
         );
         $statement->execute(['email' => $email]);
         $record = $statement->fetch();
@@ -25,11 +25,11 @@ final class UserRepository
         return is_array($record) ? User::fromRecord($record) : null;
     }
 
-    /** @return array{id: int|string, name: string, email: string, password_hash: string}|null */
+    /** @return array{id: int|string, name: string, email: string, password_hash: string, timezone: string}|null */
     public function findCredentialsByEmail(string $email): ?array
     {
         $statement = $this->database->connection()->prepare(
-            'SELECT id, name, email, password_hash FROM users WHERE email = :email LIMIT 1'
+            'SELECT id, name, email, password_hash, timezone FROM users WHERE email = :email LIMIT 1'
         );
         $statement->execute(['email' => $email]);
         $record = $statement->fetch();
@@ -40,7 +40,7 @@ final class UserRepository
     public function findById(int $id): ?User
     {
         $statement = $this->database->connection()->prepare(
-            'SELECT id, name, email FROM users WHERE id = :id LIMIT 1'
+            'SELECT id, name, email, timezone FROM users WHERE id = :id LIMIT 1'
         );
         $statement->execute(['id' => $id]);
         $record = $statement->fetch();
@@ -48,10 +48,15 @@ final class UserRepository
         return is_array($record) ? User::fromRecord($record) : null;
     }
 
-    public function create(string $name, string $email, string $passwordHash): User
+    public function create(
+        string $name,
+        string $email,
+        string $passwordHash,
+        string $timezone = User::DEFAULT_TIMEZONE,
+    ): User
     {
         $statement = $this->database->connection()->prepare(
-            'INSERT INTO users (name, email, password_hash) VALUES (:name, :email, :password_hash)'
+            'INSERT INTO users (name, email, password_hash, timezone) VALUES (:name, :email, :password_hash, :timezone)'
         );
 
         try {
@@ -59,6 +64,7 @@ final class UserRepository
                 'name' => $name,
                 'email' => $email,
                 'password_hash' => $passwordHash,
+                'timezone' => $timezone,
             ]);
         } catch (PDOException $exception) {
             if (($exception->errorInfo[0] ?? null) === '23000'
@@ -76,5 +82,15 @@ final class UserRepository
         }
 
         return $user;
+    }
+
+    public function updateTimezoneForUser(int $userId, string $timezone): ?User
+    {
+        $statement = $this->database->connection()->prepare(
+            'UPDATE users SET timezone = :timezone, updated_at = CURRENT_TIMESTAMP(6) WHERE id = :id'
+        );
+        $statement->execute(['timezone' => $timezone, 'id' => $userId]);
+
+        return $this->findById($userId);
     }
 }

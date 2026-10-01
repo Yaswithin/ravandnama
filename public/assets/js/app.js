@@ -76,7 +76,12 @@ function renderAuthenticatedPage(path, user) {
     }
 
     if (path === "/profile") {
-        main.append(renderProfileView(user, handleLogout));
+        main.append(renderProfileView(user, handleLogout, {
+            getCsrfToken: () => getAuthState().csrfToken,
+            refreshCsrfToken,
+            onAuthenticationExpired: handleAuthenticationExpired,
+            onUserUpdated: setAuthenticatedUser,
+        }));
         return;
     }
 
@@ -91,6 +96,7 @@ function renderAuthenticatedPage(path, user) {
 
     if (path === "/tasks") {
         main.append(renderTasksView({
+            timeZone: user?.timezone,
             getCsrfToken: () => getAuthState().csrfToken,
             refreshCsrfToken,
             onAuthenticationExpired: handleAuthenticationExpired,

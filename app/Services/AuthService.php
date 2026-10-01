@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Core\TimeZone;
 use App\Core\Session;
 use App\Models\User;
 use App\Repositories\DuplicateEmailException as RepositoryDuplicateEmailException;
@@ -117,6 +118,35 @@ final class AuthService
         $this->startAuthenticatedSession((int) $credentials['id']);
 
         return User::fromRecord($credentials);
+    }
+
+    /** @param array<string, mixed> $input */
+    public function updateTimezoneForUser(int $userId, array $input): User
+    {
+        $errors = [];
+        foreach (array_keys($input) as $field) {
+            if ($field !== 'timezone') {
+                $errors[(string) $field] = 'This field is not allowed.';
+            }
+        }
+
+        if (!array_key_exists('timezone', $input)) {
+            $errors['timezone'] = 'Timezone is required.';
+        } elseif (!is_string($input['timezone']) || !TimeZone::isValid($input['timezone'])) {
+            $errors['timezone'] = 'Timezone must be a valid IANA timezone identifier.';
+        }
+
+        if ($errors !== []) {
+            throw new ValidationException($errors);
+        }
+
+        $user = $this->users->updateTimezoneForUser($userId, $input['timezone']);
+
+        if ($user === null) {
+            throw new RuntimeException('The authenticated user could not be loaded.');
+        }
+
+        return $user;
     }
 
     private function characterLength(string $value): int

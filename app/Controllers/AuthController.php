@@ -8,6 +8,7 @@ use App\Core\Auth;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
+use App\Core\TimeZone as TimeZoneList;
 use App\Models\User;
 use App\Services\AuthService;
 use App\Services\DuplicateEmailException;
@@ -116,6 +117,40 @@ final class AuthController
                 ],
             ]),
         );
+    }
+
+    public function updateMe(Request $request): Response
+    {
+        return $this->auth->requireUser(function (User $user) use ($request): Response {
+            $input = $this->readJson($request);
+
+            if ($input instanceof Response) {
+                return $input;
+            }
+
+            try {
+                $updatedUser = $this->authService->updateTimezoneForUser($user->id, $input);
+            } catch (ValidationException $exception) {
+                return Response::json([
+                    'success' => false,
+                    'message' => 'Validation failed.',
+                    'errors' => $exception->errors(),
+                ], 422);
+            }
+
+            return Response::json([
+                'success' => true,
+                'data' => ['user' => $updatedUser->toArray()],
+            ]);
+        });
+    }
+
+    public function timezones(): Response
+    {
+        return $this->auth->requireUser(static fn (User $user): Response => Response::json([
+            'success' => true,
+            'data' => ['timezones' => TimeZoneList::identifiers()],
+        ]));
     }
 
     public function logout(): Response

@@ -67,6 +67,8 @@ return static function (Router $router, Database $database): void {
     $router->post('/api/auth/register', $csrf->protect([$authController, 'register']));
     $router->post('/api/auth/login', $csrf->protect([$authController, 'login']));
     $router->get('/api/auth/me', [$authController, 'me']);
+    $router->put('/api/auth/me', $csrf->protect([$authController, 'updateMe']));
+    $router->get('/api/auth/timezones', [$authController, 'timezones']);
     $router->post('/api/auth/logout', $csrf->protect([$authController, 'logout']));
 
     $router->get('/api/tasks', [$taskController, 'index']);
