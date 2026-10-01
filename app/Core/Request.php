@@ -42,10 +42,7 @@ final class Request
         $path = parse_url($uri, PHP_URL_PATH);
         $headers = function_exists('getallheaders') ? getallheaders() : [];
         $headers = is_array($headers) ? $headers : [];
-
-        if (!self::hasHeader($headers, 'Content-Type') && isset($_SERVER['CONTENT_TYPE'])) {
-            $headers['Content-Type'] = $_SERVER['CONTENT_TYPE'];
-        }
+        $headers = self::normalizeHeaders($headers, $_SERVER);
 
         $contentLength = filter_var($_SERVER['CONTENT_LENGTH'] ?? null, FILTER_VALIDATE_INT);
         $bodyTooLarge = is_int($contentLength) && $contentLength > $maxBodyBytes;
@@ -115,8 +112,10 @@ final class Request
 
     public function header(string $name): ?string
     {
+        $normalizedName = strtolower($name);
+
         foreach ($this->headers as $headerName => $value) {
-            if (strcasecmp((string) $headerName, $name) === 0) {
+            if (strtolower((string) $headerName) === $normalizedName) {
                 return is_string($value) ? $value : (string) $value;
             }
         }
@@ -124,15 +123,61 @@ final class Request
         return null;
     }
 
-    /** @param array<string, mixed> $headers */
-    private static function hasHeader(array $headers, string $target): bool
+    /**
+     * Merge SAPI headers with CGI server variables. Existing SAPI headers have precedence.
+     *
+     * @param array<string, mixed> $headers
+     * @param array<string, mixed> $server
+     * @return array<string, string>
+     */
+    private static function normalizeHeaders(array $headers, array $server): array
     {
-        foreach (array_keys($headers) as $name) {
-            if (strcasecmp((string) $name, $target) === 0) {
-                return true;
+        $normalizedHeaders = [];
+
+        foreach ($headers as $name => $value) {
+            if (!is_scalar($value)) {
+                continue;
+            }
+
+            $normalizedName = self::normalizeHeaderName((string) $name);
+
+            if ($normalizedName !== null && !array_key_exists($normalizedName, $normalizedHeaders)) {
+                $normalizedHeaders[$normalizedName] = (string) $value;
             }
         }
 
-        return false;
+        foreach ($server as $name => $value) {
+            $serverName = strtoupper((string) $name);
+
+            if (str_starts_with($serverName, 'HTTP_')) {
+                $headerName = str_replace('_', '-', substr($serverName, 5));
+            } elseif ($serverName === 'CONTENT_TYPE' || $serverName === 'CONTENT_LENGTH') {
+                $headerName = str_replace('_', '-', $serverName);
+            } else {
+                continue;
+            }
+
+            $normalizedName = self::normalizeHeaderName($headerName);
+
+            if (!is_scalar($value)
+                || $normalizedName === null
+                || array_key_exists($normalizedName, $normalizedHeaders)) {
+                continue;
+            }
+
+            $normalizedHeaders[$normalizedName] = (string) $value;
+        }
+
+        return $normalizedHeaders;
     }
+
+    private static function normalizeHeaderName(string $name): ?string
+    {
+        if ($name === '' || preg_match("/\\A[!#$%&'*+.^_`|~0-9A-Za-z-]+\\z/D", $name) !== 1) {
+            return null;
+        }
+
+        return strtolower($name);
+    }
+
 }
